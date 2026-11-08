@@ -413,17 +413,33 @@
         svg.append(pl);
         return el('div', { sinif: 'grafik-kap' }, svg, el('p', { sinif: 'esik-aciklama yalin' }, 'Son 12 ay · iş günleri'));
       };
-      const ciplerKap = cipler(hepsi.map((h) => [h.kod, h.kisaAd]), secili, (k) => { secili = k; cizKart(); });
-      ciplerKap.classList.add('esit');
-      kok.append(ciplerKap, kart);
-      if (enf !== null) {
-        const satirlar = [['Enflasyon (TÜFE)', degisimMetni(enf)]];
-        for (const h of hepsi) if (h.aylikOrtalamaDegisim !== null) satirlar.push([h.ad, degisimMetni(h.aylikOrtalamaDegisim), h.aylikOrtalamaDegisim >= enf ? 'olumlu' : 'olumsuz']);
-        kok.append(
-          el('h3', { sinif: 'ara-baslik' }, `Enflasyonla karşılaştırma · ${ad(v.sonAy - 12)} → ${ad(v.sonAy)}`),
-          satirKarti(satirlar),
-          el('p', { sinif: 'ipucu', stil: 'margin-top:6px' }, 'Aylık ortalama fiyatlarla. Yeşil: enflasyonun üstünde, kırmızı: altında kaldı.'));
+      const yeniCipler = () => {
+        const c = cipler(hepsi.map((h) => [h.kod, h.kisaAd]), secili, (k) => { secili = k; cizKart(); });
+        c.classList.add('esit');
+        return c;
+      };
+      let ciplerKap = yeniCipler();
+      const kurlar = el('div', { sinif: 'kur-listesi' });
+      function cizKurlar() {
+        kurlar.textContent = '';
+        for (const h of hepsi) {
+          const d = h.gunlukDegisim;
+          const ok = d === null ? '' : d > 0 ? '▲ ' : d < 0 ? '▼ ' : '';
+          kurlar.append(el('button', {
+            type: 'button', sinif: h.kod === secili ? 'kur secili' : 'kur', 'aria-pressed': h.kod === secili ? 'true' : 'false',
+            onclick: () => {
+              secili = h.kod;
+              const c = yeniCipler(); ciplerKap.replaceWith(c); ciplerKap = c;
+              cizKart();
+              kart.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            },
+          }, el('span', { sinif: 'kur-ad' }, h.gram ? `${h.kisaAd} (gram)` : h.ad),
+          el('span', { sinif: 'kur-sag' }, el('b', {}, tl(h.fiyat, 2)), d === null ? null : el('small', {}, `${ok}${yuzde(Math.abs(d))}`))));
+        }
       }
+      kok.append(ciplerKap, kart,
+        el('h3', { sinif: 'ara-baslik' }, `Güncel kurlar · ${E.tarihMetni(hepsi[0].tarih)}`), kurlar,
+        el('p', { sinif: 'ipucu', stil: 'margin-top:6px' }, 'Döviz: TCMB gösterge satış kuru. Altın ve gümüş: Borsa İstanbul ortalaması, TL/gram. Değişim önceki iş gününe göre.'));
       let kaynak = 'tl';
       const ondalik = (m) => (m % 1 === 0 ? 0 : 2);
       const birimMetni = (k, m) => (!k ? tl(m, ondalik(m)) : `${E.sayi(m, ondalik(m))}\u00A0${k.birimAdi}`);
@@ -441,6 +457,14 @@
         tutar.birim(!k ? 'TL' : k.gram ? 'gram' : k.simge);
       }
       kok.append(el('h3', { sinif: 'ara-baslik' }, 'Çevirici'), kaynakCip, el('div', { sinif: 'form', stil: 'margin-top:4px' }, tutar.kap), cevir);
+      if (enf !== null) {
+        const satirlar = [['Enflasyon (TÜFE)', degisimMetni(enf)]];
+        for (const h of hepsi) if (h.aylikOrtalamaDegisim !== null) satirlar.push([h.ad, degisimMetni(h.aylikOrtalamaDegisim), h.aylikOrtalamaDegisim >= enf ? 'olumlu' : 'olumsuz']);
+        kok.append(
+          el('h3', { sinif: 'ara-baslik', stil: 'margin-top:24px' }, `Enflasyonla karşılaştırma · ${ad(v.sonAy - 12)} → ${ad(v.sonAy)}`),
+          satirKarti(satirlar),
+          el('p', { sinif: 'ipucu', stil: 'margin-top:6px' }, 'Aylık ortalama fiyatlarla. Yeşil: enflasyonun üstünde, kırmızı: altında kaldı.'));
+      }
       function cizKart() {
         const h = hepsi.find((x) => x.kod === secili);
         const alt = [`${h.kaynak} · ${E.tarihMetni(h.tarih)}`];
@@ -448,6 +472,7 @@
         if (h.yillikDegisim !== null) alt.push(`Bir yılda ${degisimMetni(h.yillikDegisim)}`);
         kart.textContent = '';
         kart.append(sonucKarti({ baslik: h.gram ? h.ad : `1 ${h.ad}`, deger: tl(h.fiyat, 2), alt: alt.join('\n'), ek: grafik(h.grafik) }));
+        cizKurlar();
         ciz();
       }
       function ciz() {

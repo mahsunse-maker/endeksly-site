@@ -19,6 +19,8 @@ permissions:
 
 jobs:
   guncelle:
+    # Yalnızca açık yayın deposunda çalışır; özel uygulama deposunda anahtar yok.
+    if: github.repository == 'mahsunse-maker/endeksly-site'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

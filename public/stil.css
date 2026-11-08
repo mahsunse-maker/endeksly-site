@@ -216,3 +216,12 @@ a.karo:hover { border-color: var(--ana); transform: translateY(-2px); }
 .sonraki .ms { font-size: 18px; }
 .cipler.esit { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
 .cipler.esit .cip { padding: 8px 4px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kur-listesi { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 18px; overflow: hidden; }
+.kur { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 12px 16px; border: 0; border-top: 1px solid var(--cizgi);
+  background: none; color: var(--murekkep); font: inherit; text-align: left; cursor: pointer; }
+.kur:first-child { border-top: 0; }
+.kur.secili { background: color-mix(in srgb, #9FE1CB 28%, transparent); }
+.kur-ad { font-weight: 700; }
+.kur-sag { display: flex; flex-direction: column; align-items: flex-end; }
+.kur-sag b { font-family: "Poppins", sans-serif; font-variant-numeric: tabular-nums; }
+.kur-sag small { color: var(--soluk); font-size: 12px; }
