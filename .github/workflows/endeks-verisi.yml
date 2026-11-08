@@ -1,0 +1,42 @@
+# TÜFE ve mevduat faizini TCMB EVDS'den alır, endeksly.json'u günceller.
+# Bu iş akışı yayın deposunda (açık, Cloudflare Pages'e bağlı) çalışacak;
+# özel uygulama deposu asla Pages'e bağlanmaz.
+# Gerekli gizli değişken: EVDS_API_KEY (Settings > Secrets > Actions).
+name: Endeks verisi
+
+on:
+  schedule:
+    # TÜİK enflasyonu ayın 3'ünde 10:00'da açıklar; EVDS'ye geçmesi için
+    # 3–6'sı arasında her gün 12:00 TSİ ve her cumartesi (mevduat) dener.
+    - cron: "0 9 3-6 * *"
+    - cron: "0 6 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  guncelle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Testler
+        run: python -m unittest discover -s veri -p "test_*.py"
+      - name: Veriyi al
+        env:
+          EVDS_API_KEY: ${{ secrets.EVDS_API_KEY }}
+        run: python veri/endeks_verisi.py public/veri/endeksly.json
+      - name: Değiştiyse kaydet
+        run: |
+          if git diff --quiet -- public/veri/endeksly.json && git ls-files --error-unmatch public/veri/endeksly.json >/dev/null 2>&1; then
+            echo "Değişiklik yok."
+            exit 0
+          fi
+          git config user.name "endeks-verisi"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/veri/endeksly.json
+          git commit -m "Endeks verisi: $(date +%Y-%m-%d)"
+          git push

@@ -1,0 +1,6 @@
+{
+  // Cloudflare Pages statik site: public/ klasörü olduğu gibi yayınlanır.
+  "name": "endeksly-site",
+  "compatibility_date": "2026-09-01",
+  "pages_build_output_dir": "./public"
+}
