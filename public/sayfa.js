@@ -399,7 +399,7 @@
       const tutar = tutarAlani('TL tutarı', ciz);
       const cevir = el('div', { sinif: 'sonuc-alani' });
       const enf = v.yillikEnflasyon(v.sonAy);
-      const miktar = (h, t) => `${E.sayi(t / h.fiyat, 2)} ${h.altin ? 'gram altın' : h.simge}`;
+      const miktar = (h, t) => `${E.sayi(t / h.fiyat, 2)}\u00A0${h.altin ? 'gram\u00A0altın' : h.simge}`;
       const grafik = (seri) => {
         if (seri.length < 2) return null;
         const mn = Math.min(...seri), mx = Math.max(...seri), ar = (mx - mn) || 1;
@@ -425,7 +425,7 @@
       }
       let kaynak = 'tl';
       const ondalik = (m) => (m % 1 === 0 ? 0 : 2);
-      const birimMetni = (k, m) => (!k ? tl(m, ondalik(m)) : `${E.sayi(m, ondalik(m))} ${k.altin ? 'gram altın' : k.simge}`);
+      const birimMetni = (k, m) => (!k ? tl(m, ondalik(m)) : `${E.sayi(m, ondalik(m))}\u00A0${k.altin ? 'gram\u00A0altın' : k.simge}`);
       const ornek = (k) => (k === 'tl' ? [100000, '100.000'] : k === 'altin' ? [10, '10'] : [1000, '1.000']);
       const donustur = (k, m) => {
         const tlTutar = k ? m * k.fiyat : m;
