@@ -78,6 +78,16 @@ details p { margin: 10px 0 0; color: var(--soluk); }
 .iletisim .eposta { font-size: 20px; font-weight: 700; word-break: break-all; }
 .dugme { display: inline-block; background: var(--ana); color: var(--zemin); text-decoration: none; font-weight: 700; padding: 10px 18px; border-radius: 12px; }
 
+/* Diğer uygulamalarımız (kardeş uygulamalar) */
+.diger { border-top: 1px solid var(--cizgi); padding: 32px 0 28px; }
+.diger h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--soluk); margin: 0 0 14px; }
+.uygulamalar { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.uyg { display: flex; align-items: center; gap: 12px; min-width: 0; background: var(--kart); border: 1px solid var(--cizgi); border-radius: 16px; padding: 12px 14px; text-decoration: none; color: var(--murekkep); }
+.uyg:hover { border-color: var(--ana); }
+.uyg img { width: 44px; height: 44px; border-radius: 11px; flex: none; }
+.uyg b { display: block; font-size: 16px; }
+.uyg span { display: block; font-size: 13px; color: var(--soluk); line-height: 1.35; }
+
 .alt-bilgi { border-top: 1px solid var(--cizgi); padding: 24px 0 40px; color: var(--soluk); font-size: 14px; }
 .alt-bilgi a { color: var(--soluk); margin-right: 16px; }
 .alt-bilgi p { margin: 8px 0 0; }
