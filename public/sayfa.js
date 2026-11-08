@@ -413,7 +413,8 @@
         svg.append(pl);
         return el('div', { sinif: 'grafik-kap' }, svg, el('p', { sinif: 'esik-aciklama yalin' }, 'Son 12 ay · iş günleri'));
       };
-      const ciplerKap = cipler(hepsi.map((h) => [h.kod, h.ad]), secili, (k) => { secili = k; cizKart(); });
+      const ciplerKap = cipler(hepsi.map((h) => [h.kod, h.altin ? 'Altın' : h.ad]), secili, (k) => { secili = k; cizKart(); });
+      ciplerKap.classList.add('esit');
       kok.append(ciplerKap, kart);
       if (enf !== null) {
         const satirlar = [['Enflasyon (TÜFE)', degisimMetni(enf)]];
@@ -432,7 +433,8 @@
         return [...(k ? [['Türk lirası', tl(tlTutar, 2)]] : []),
           ...hepsi.filter((x) => !k || x.kod !== k.kod).map((x) => [x.ad, miktar(x, tlTutar)])];
       };
-      const kaynakCip = cipler([['tl', 'TL'], ...hepsi.map((h) => [h.kod, h.ad])], kaynak, (k) => { kaynak = k; birimiYaz(); ciz(); });
+      const kaynakCip = cipler([['tl', 'TL'], ...hepsi.map((h) => [h.kod, h.altin ? 'Altın' : h.ad])], kaynak, (k) => { kaynak = k; birimiYaz(); ciz(); });
+      kaynakCip.classList.add('esit');
       function birimiYaz() {
         const k = hepsi.find((x) => x.kod === kaynak);
         tutar.etiket(!k ? 'TL tutarı' : k.altin ? 'Gram altın miktarı' : `${k.ad} tutarı`);

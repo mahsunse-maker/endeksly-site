@@ -214,3 +214,5 @@ a.karo:hover { border-color: var(--ana); transform: translateY(-2px); }
 .esik-aciklama.yalin { border-left: 0; padding-left: 0; }
 .sonraki { display: flex; align-items: center; gap: 6px; color: var(--soluk); font-size: 13px; margin: 0 4px; }
 .sonraki .ms { font-size: 18px; }
+.cipler.esit { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.cipler.esit .cip { padding: 8px 4px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
