@@ -43,6 +43,7 @@
       get deger() { return E.tutarCoz(girdi.value); },
       yaz(metin) { girdi.value = metin; eski = metin; },
       etiket(m) { kap.querySelector('label').textContent = m; },
+      birim(m) { kap.querySelector('.tutar span').textContent = m; },
     };
   }
 
@@ -422,7 +423,22 @@
           satirKarti(satirlar),
           el('p', { sinif: 'ipucu', stil: 'margin-top:6px' }, 'Aylık ortalama fiyatlarla. Yeşil: enflasyonun üstünde, kırmızı: altında kaldı.'));
       }
-      kok.append(el('div', { sinif: 'form', stil: 'margin-top:14px' }, tutar.kap), cevir);
+      let kaynak = 'tl';
+      const ondalik = (m) => (m % 1 === 0 ? 0 : 2);
+      const birimMetni = (k, m) => (!k ? tl(m, ondalik(m)) : `${E.sayi(m, ondalik(m))} ${k.altin ? 'gram altın' : k.simge}`);
+      const ornek = (k) => (k === 'tl' ? [100000, '100.000'] : k === 'altin' ? [10, '10'] : [1000, '1.000']);
+      const donustur = (k, m) => {
+        const tlTutar = k ? m * k.fiyat : m;
+        return [...(k ? [['Türk lirası', tl(tlTutar, 2)]] : []),
+          ...hepsi.filter((x) => !k || x.kod !== k.kod).map((x) => [x.ad, miktar(x, tlTutar)])];
+      };
+      const kaynakCip = cipler([['tl', 'TL'], ...hepsi.map((h) => [h.kod, h.ad])], kaynak, (k) => { kaynak = k; birimiYaz(); ciz(); });
+      function birimiYaz() {
+        const k = hepsi.find((x) => x.kod === kaynak);
+        tutar.etiket(!k ? 'TL tutarı' : k.altin ? 'Gram altın miktarı' : `${k.ad} tutarı`);
+        tutar.birim(!k ? 'TL' : k.altin ? 'gram' : k.simge);
+      }
+      kok.append(el('h3', { sinif: 'ara-baslik' }, 'Çevirici'), kaynakCip, el('div', { sinif: 'form', stil: 'margin-top:4px' }, tutar.kap), cevir);
       function cizKart() {
         const h = hepsi.find((x) => x.kod === secili);
         const alt = [`${h.kaynak} · ${E.tarihMetni(h.tarih)}`];
@@ -436,13 +452,15 @@
         cevir.textContent = '';
         const t = tutar.deger;
         const h = hepsi.find((x) => x.kod === secili);
+        const k = hepsi.find((x) => x.kod === kaynak);
         if (t > 0) {
-          cevir.append(satirKarti(hepsi.map((x) => [x.ad, miktar(x, t)])));
+          cevir.append(satirKarti(donustur(k, t)));
           cevir.append(paylasDugmesi(`${ad(v.sonAy - 12)} ile ${ad(v.sonAy)} arasında enflasyon ${yuzde(enf || 0)}`
             + hepsi.filter((x) => x.aylikOrtalamaDegisim !== null).map((x) => `, ${x.ad.toLocaleLowerCase('tr')} ${yuzde(x.aylikOrtalamaDegisim)}`).join('') + '.'));
         } else {
-          cevir.append(ornekKarti(`100.000 TL, ${E.tarihMetni(h.tarih)} fiyatlarıyla ${hepsi.map((x) => miktar(x, 100000)).join(', ')} ediyor.`,
-            () => { tutar.yaz('100.000'); ciz(); }));
+          const [om, oy] = ornek(kaynak);
+          cevir.append(ornekKarti(`${birimMetni(k, om)}, ${E.tarihMetni(h.tarih)} fiyatlarıyla ${donustur(k, om).map((e) => e[1]).join(', ')} ediyor.`,
+            () => { tutar.yaz(oy); ciz(); }));
         }
       }
       cizKart();
