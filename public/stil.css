@@ -231,3 +231,7 @@ a.kayan-sayfa { color: inherit; text-decoration: none; }
 .kayan-kur span { color: #E1F5EE; font-size: 15px; }
 .kayan-kur b { font: 800 17px/1.4 "Poppins", sans-serif; font-variant-numeric: tabular-nums; color: #fff; }
 .kayan-kur small { color: #9FE1CB; font-size: 12px; text-align: right; }
+.kayan-not { display: flex; align-items: center; gap: 6px; }
+.kayan-not span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kayan-not .ok { font-size: 18px; line-height: 1; }
+a.kayan-sayfa:hover .kayan-not .ok { transform: translateX(2px); }

@@ -22,6 +22,8 @@
     return r;
   };
 
+  /** Uygulamadaki kayan kartla aynı: enflasyon, kira, emekli zammı, maaş
+   *  (örnek hesap) ve güncel kurlar; her sayfa kendi hesap sayfasına gider. */
   function sayfalar(v) {
     const s = v.sonAy, liste = [];
     const yillik = v.yillikEnflasyon(s), aylik = v.aylikEnflasyon(s);
@@ -30,40 +32,45 @@
         baslik: `${E.ad(s)} yıllık enflasyon`, etiket: aciklanmaGunu(s), deger: E.yuzde(yillik),
         alt: aylik === null ? 'Tüketici fiyatları, TÜFE' : `Aylık ${E.yuzde(aylik)}`,
         seri: son12((a) => v.yillikEnflasyon(a), s), not: egilim(yillik, v.yillikEnflasyon(s - 6)),
+        href: '/enflasyon-hesaplama/',
       });
     }
-    if (aylik !== null) {
-      const aylar = son12((a) => v.aylikEnflasyon(a), s);
-      const ort = aylar.length ? aylar.reduce((a, b) => a + b, 0) / aylar.length : null;
+    const k = E.kira(v, 20000, s + 1);
+    if (k) {
       liste.push({
-        baslik: `${E.ad(s)} aylık enflasyon`, etiket: aciklanmaGunu(s), deger: E.yuzde(aylik),
-        alt: 'Bir önceki aya göre fiyat artışı', seri: aylar,
-        not: ort === null ? 'Son 12 ay' : `Son 12 ayın ortalaması ${E.yuzde(ort)}`,
+        baslik: 'Kira artış sınırı', etiket: `${E.ayAdi(s + 1)} yenilemesi`, deger: E.yuzde(k.oran),
+        alt: `20.000 TL kira en fazla ${E.tl(k.yeniKiraUstSiniri)}`,
+        seri: son12((a) => v.tufe.onIkiAylikOrtalama(a), s), not: 'Son 12 ay · TÜFE 12 aylık ortalama değişim',
+        href: '/kira-artis-hesaplama/',
       });
     }
-    if (!v.ufe.bos) {
-      const us = v.ufe.son, u = v.ufe.yillik(us);
-      if (u !== null) {
-        liste.push({
-          baslik: `${E.ad(us)} üretici enflasyonu`, etiket: aciklanmaGunu(us), deger: E.yuzde(u),
-          alt: 'Yurt içi üretici fiyatları, Yİ-ÜFE', seri: son12((a) => v.ufe.yillik(a), us),
-          not: egilim(u, v.ufe.yillik(us - 6)),
-        });
-      }
+    const z = E.emekliZammi(v).guncel;
+    if (z) {
+      const seri = [];
+      for (let i = 1; i <= z.gecenAy; i++) { const d = v.tufe.degisim(z.baz, z.baz + i); if (d !== null) seri.push(d); }
+      liste.push({
+        baslik: `${E.ad(z.zamAyi)} emekli zammı`, etiket: z.kesin ? 'Kesinleşti' : `${z.gecenAy} aylık veri`,
+        deger: E.yuzde(z.ssk), alt: `20.000 TL aylık → ${E.tl(20000 * (1 + z.ssk / 100))}`,
+        seri: seri.length < 2 ? [0, ...seri] : seri,
+        not: z.memur === null ? 'SSK ve Bağ-Kur · altı aylık TÜFE' : `SSK ve Bağ-Kur · memur ${E.yuzde(z.memur)}`,
+        href: '/emekli-memur-zammi-hesaplama/',
+      });
+    }
+    const m = E.maas(v, 40000, s - 12, 40000, s);
+    if (m) {
+      liste.push({
+        baslik: 'Maaşın reel değeri', etiket: 'Örnek', deger: E.tl(m.esdegerTutar),
+        alt: `${E.ad(s - 12)} maaşı 40.000 TL ise bugünkü karşılığı`,
+        seri: son12((a) => v.tufe.get(a), s), not: 'Aynı alım gücü için gereken tutar · TÜFE',
+        href: '/maas-enflasyon-hesaplama/',
+      });
     }
     const kurlar = E.dovizAltin(v);
     if (kurlar.length) {
-      const [, m, g] = kurlar[0].tarih.split('-').map(Number);
+      const [, ay, g] = kurlar[0].tarih.split('-').map(Number);
       liste.push({
-        baslik: 'Güncel kurlar', etiket: `${g} ${E.AYLAR[m - 1]}`, kurlar,
-        not: 'TCMB gösterge kuru · Borsa İstanbul ortalaması',
-      });
-    } else if (!v.usd.bos) {
-      const ds = v.usd.son, kur = v.usd.get(ds), d = v.usd.yillik(ds);
-      liste.push({
-        baslik: `${E.ad(ds)} dolar kuru`, etiket: null, deger: E.tl(kur, 2),
-        alt: d === null ? 'Aylık ortalama satış kuru' : `Aylık ortalama · bir yılda ${E.degisimMetni(d)}`,
-        seri: son12((a) => v.usd.get(a), ds), not: 'Son 12 ay · TCMB döviz satış kuru',
+        baslik: 'Güncel kurlar', etiket: `${g} ${E.AYLAR[ay - 1]}`, kurlar,
+        not: 'TCMB gösterge kuru · Borsa İstanbul ortalaması', href: '/doviz-altin/',
       });
     }
     return liste;
@@ -92,19 +99,16 @@
       const ok = d === null ? '' : d > 0 ? '▲ ' : d < 0 ? '▼ ' : '';
       return `<div class="kayan-kur"><span>${kacis(k.kisaAd)}</span><b>${kacis(E.tl(k.fiyat, 2))}</b><small>${d === null ? '' : kacis(ok + E.yuzde(Math.abs(d)))}</small></div>`;
     };
-    iz.innerHTML = liste.map((p, i) => p.kurlar ? `
-      <a class="kayan-sayfa kayan-kurlar" href="/doviz-altin/" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${liste.length}: güncel kurlar, döviz ve altın sayfasını açar">
-        <div class="kayan-baslik"><span>${kacis(p.baslik)}</span><span class="etiket">${kacis(p.etiket)}</span></div>
-        <div class="kayan-kur-liste">${p.kurlar.map(kurSatiri).join('')}</div>
-        <p class="kayan-not">${kacis(p.not)}</p>
-      </a>` : `
-      <div class="kayan-sayfa" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${liste.length}">
+    const not = (p) => `<p class="kayan-not"><span>${kacis(p.not)}</span><span class="ok" aria-hidden="true">›</span></p>`;
+    iz.innerHTML = liste.map((p, i) => `
+      <a class="kayan-sayfa${p.kurlar ? ' kayan-kurlar' : ''}" href="${p.href}" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${liste.length}: ${kacis(p.baslik)}">
         <div class="kayan-baslik"><span>${kacis(p.baslik)}</span>${p.etiket ? `<span class="etiket">${kacis(p.etiket)}</span>` : ''}</div>
+        ${p.kurlar ? `<div class="kayan-kur-liste">${p.kurlar.map(kurSatiri).join('')}</div>` : `
         <div class="kayan-deger">${kacis(p.deger)}</div>
         <p class="kayan-alt">${kacis(p.alt)}</p>
-        <div class="kayan-grafik">${cizgi(p.seri)}</div>
-        <p class="kayan-not">${kacis(p.not)}</p>
-      </div>`).join('');
+        <div class="kayan-grafik">${cizgi(p.seri)}</div>`}
+        ${not(p)}
+      </a>`).join('');
     noktalar.innerHTML = liste.map((_, i) => `<button type="button" role="tab" aria-label="${i + 1}. sayfa" data-i="${i}"></button>`).join('');
     const dugmeler = [...noktalar.children];
     let secili = 0, durdu = false, zamanlayici = null;
