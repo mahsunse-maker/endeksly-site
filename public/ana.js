@@ -51,22 +51,12 @@
         });
       }
     }
-    const gunluk = {};
-    for (const x of E.dovizAltin(v)) gunluk[x.kod] = x;
-    if (gunluk.altin) {
-      const a = gunluk.altin;
+    const kurlar = E.dovizAltin(v);
+    if (kurlar.length) {
+      const [, m, g] = kurlar[0].tarih.split('-').map(Number);
       liste.push({
-        baslik: `${E.tarihMetni(a.tarih)} gram altın`, etiket: null, deger: E.tl(a.fiyat, 2),
-        alt: a.yillikDegisim === null ? 'Borsa İstanbul ortalaması' : `Borsa İstanbul ortalaması · bir yılda ${E.degisimMetni(a.yillikDegisim)}`,
-        seri: son12((m) => v.altin.get(m), s), not: 'Son 12 ay · aylık ortalama',
-      });
-    }
-    if (gunluk.usd) {
-      const d = gunluk.usd;
-      liste.push({
-        baslik: `${E.tarihMetni(d.tarih)} dolar kuru`, etiket: null, deger: E.tl(d.fiyat, 2),
-        alt: d.yillikDegisim === null ? 'TCMB gösterge satış kuru' : `TCMB gösterge kuru · bir yılda ${E.degisimMetni(d.yillikDegisim)}`,
-        seri: son12((m) => v.usd.get(m), s), not: 'Son 12 ay · aylık ortalama',
+        baslik: 'Güncel kurlar', etiket: `${g} ${E.AYLAR[m - 1]}`, kurlar,
+        not: 'TCMB gösterge kuru · Borsa İstanbul ortalaması',
       });
     } else if (!v.usd.bos) {
       const ds = v.usd.son, kur = v.usd.get(ds), d = v.usd.yillik(ds);
@@ -97,7 +87,17 @@
     const noktalar = document.getElementById('kayan-noktalar');
     const liste = sayfalar(v);
     if (!liste.length) return;
-    iz.innerHTML = liste.map((p, i) => `
+    const kurSatiri = (k) => {
+      const d = k.gunlukDegisim;
+      const ok = d === null ? '' : d > 0 ? '▲ ' : d < 0 ? '▼ ' : '';
+      return `<div class="kayan-kur"><span>${kacis(k.kisaAd)}</span><b>${kacis(E.tl(k.fiyat, 2))}</b><small>${d === null ? '' : kacis(ok + E.yuzde(Math.abs(d)))}</small></div>`;
+    };
+    iz.innerHTML = liste.map((p, i) => p.kurlar ? `
+      <a class="kayan-sayfa kayan-kurlar" href="/doviz-altin/" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${liste.length}: güncel kurlar, döviz ve altın sayfasını açar">
+        <div class="kayan-baslik"><span>${kacis(p.baslik)}</span><span class="etiket">${kacis(p.etiket)}</span></div>
+        <div class="kayan-kur-liste">${p.kurlar.map(kurSatiri).join('')}</div>
+        <p class="kayan-not">${kacis(p.not)}</p>
+      </a>` : `
       <div class="kayan-sayfa" role="group" aria-roledescription="slide" aria-label="${i + 1} / ${liste.length}">
         <div class="kayan-baslik"><span>${kacis(p.baslik)}</span>${p.etiket ? `<span class="etiket">${kacis(p.etiket)}</span>` : ''}</div>
         <div class="kayan-deger">${kacis(p.deger)}</div>
