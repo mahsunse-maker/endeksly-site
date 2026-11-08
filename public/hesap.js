@@ -51,6 +51,19 @@
     }
   }
 
+  /** Günlük fiyatlar (iş günleri): [['YYYY-MM-DD', değer], ...] eskiden yeniye. */
+  class GunlukSeri {
+    constructor(bolum) {
+      this.ad = (bolum && bolum.ad) || '';
+      this.gunler = Object.entries((bolum && bolum.gunler) || {})
+        .map(([g, d]) => [g, Number(d)]).sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    }
+    get bos() { return this.gunler.length === 0; }
+    get son() { return this.gunler[this.gunler.length - 1]; }
+    get onceki() { return this.gunler.length < 2 ? null : this.gunler[this.gunler.length - 2]; }
+    tarihte(g) { let b = null; for (const x of this.gunler) { if (x[0] > g) break; b = x; } return b; }
+  }
+
   class Veri {
     constructor(j) {
       this.ornek = j.ornek === true;
@@ -59,8 +72,13 @@
       this.tufe = new Seri(j.tufe);
       this.ufe = new Seri(j.ufe);
       this.usd = new Seri(j.usd);
+      this.eur = new Seri(j.eur);
+      this.gbp = new Seri(j.gbp);
       this.altin = new Seri(j.altin);
       this.bist = new Seri(j.bist);
+      this.gunluk = {};
+      const gs = (j.gunluk && j.gunluk.seriler) || {};
+      for (const [k, b] of Object.entries(gs)) this.gunluk[k] = new GunlukSeri(b);
       if (this.tufe.m.size < 25) throw new Error('TÜFE verisi çok kısa');
     }
     get ilkAy() { return this.tufe.ilk; }
@@ -158,6 +176,35 @@
   const endeksOrani = (v, tur, i) => v[tur.seri][tur.yontem](i);
   const endeksSonAy = (v, tur) => (v[tur.seri].bos ? null : v[tur.seri].son);
 
+  /** Döviz ve altın (uygulamadaki DovizAltin). */
+  const VARLIK_SIRA = ['usd', 'eur', 'gbp', 'altin'];
+  const VARLIK_AD = { usd: 'Dolar', eur: 'Euro', gbp: 'Sterlin', altin: 'Gram altın' };
+  const VARLIK_SIMGE = { usd: '$', eur: '€', gbp: '£', altin: 'gr' };
+  const tarihMetni = (g) => { const [y, m, d] = g.split('-').map(Number); return `${d} ${AYLAR[m - 1]} ${y}`; };
+  function dovizAltin(v) {
+    const r = [];
+    for (const k of VARLIK_SIRA) {
+      const g = v.gunluk[k];
+      if (!g || g.bos) continue;
+      const [tarih, fiyat] = g.son;
+      const once = g.onceki;
+      const [y, m, d] = tarih.split('-');
+      const yilBasi = `${Number(y) - 1}-${m}-${d}`;
+      const yilOnce = g.tarihte(yilBasi);
+      const aylik = k === 'altin' ? v.altin : v[k];
+      r.push({
+        kod: k, ad: VARLIK_AD[k], simge: VARLIK_SIMGE[k], altin: k === 'altin',
+        kaynak: k === 'altin' ? 'Borsa İstanbul ortalaması, TL/gram' : 'TCMB gösterge satış kuru',
+        tarih, fiyat,
+        gunlukDegisim: once ? (fiyat / once[1] - 1) * 100 : null,
+        yillikDegisim: yilOnce ? (fiyat / yilOnce[1] - 1) * 100 : null,
+        grafik: g.gunler.filter((x) => x[0] >= yilBasi).map((x) => x[1]),
+        aylikOrtalamaDegisim: aylik.degisim(v.sonAy - 12, v.sonAy),
+      });
+    }
+    return r;
+  }
+
   /** Yeniden değerleme oranı: son Ekim itibarıyla Yİ-ÜFE 12 aylık ortalama. */
   function yenidenDegerleme(v) {
     if (v.ufe.bos) return null;
@@ -211,7 +258,7 @@
   const Endeks = {
     AYLAR, ay, coz, anahtar, ad, ayAdi, yilOf, ayNo, Veri, Seri, MEMUR_TS,
     kira, maas, zamDonemi, emekliZammi, paraDegeri, ENDEKS_TURLERI, endeksOrani, endeksSonAy,
-    yenidenDegerleme, sayi, tl, yuzde, degisimMetni, tutarCoz, tutarBicimle,
+    yenidenDegerleme, dovizAltin, tarihMetni, GunlukSeri, sayi, tl, yuzde, degisimMetni, tutarCoz, tutarBicimle,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Endeks;
   else kok.Endeks = Endeks;

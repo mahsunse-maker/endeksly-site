@@ -1,3 +1,4 @@
+import datetime as dt
 import os
 import sys
 import unittest
@@ -7,6 +8,30 @@ import endeks_verisi as ev  # noqa: E402
 
 
 class Testler(unittest.TestCase):
+    def test_gunluk_ayiklama(self):
+        satirlar = [
+            {"Tarih": "05-11-2026", "TP_DK_USD_S_YTL": "50.026", "TP_ALTINPIYASA_AGORT02": "6624846.9"},
+            {"Tarih": "29-10-2026", "TP_DK_USD_S_YTL": None, "TP_ALTINPIYASA_AGORT02": None},
+        ]
+        g = ev.gunlukleri_ayikla(satirlar)
+        self.assertEqual(g["usd"], {"2026-11-05": 50.026})
+        self.assertEqual(g["altin"], {"2026-11-05": 6624.85})
+        self.assertEqual(g["eur"], {})
+
+    def test_gunluk_denetim(self):
+        bugun = dt.date(2026, 11, 8)
+        gunler = [bugun - dt.timedelta(days=i) for i in range(200, 0, -1)]
+        iyi = {a: {g.isoformat(): 50.0 for g in gunler} for a in ("usd", "eur", "gbp", "altin")}
+        ev.gunluk_denetle(iyi, bugun)
+        eski = {a: dict(s) for a, s in iyi.items()}
+        eski["usd"] = {g: d for g, d in eski["usd"].items() if g < "2026-10-01"}
+        with self.assertRaises(SystemExit):
+            ev.gunluk_denetle(eski, bugun)
+        sicrama = {a: dict(s) for a, s in iyi.items()}
+        sicrama["altin"][gunler[-1].isoformat()] = 80.0
+        with self.assertRaises(SystemExit):
+            ev.gunluk_denetle(sicrama, bugun)
+
     def test_ay_anahtari(self):
         self.assertEqual(ev.ay_anahtari("2024-1"), "2024-01")
         self.assertEqual(ev.ay_anahtari("16-10-2024"), "2024-10")

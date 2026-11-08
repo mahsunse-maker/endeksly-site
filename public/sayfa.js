@@ -389,6 +389,64 @@
       cizListe();
       ciz();
     },
+    doviz(v, kok) {
+      const hepsi = E.dovizAltin(v);
+      if (!hepsi.length) { kok.append(el('p', { sinif: 'not' }, 'Günlük fiyat verisi henüz yüklenmedi.')); return; }
+      let secili = (new URLSearchParams(location.search).get('v')) || 'altin';
+      if (!hepsi.some((h) => h.kod === secili)) secili = hepsi[0].kod;
+      const kart = el('div', { sinif: 'sonuc-alani' });
+      const tutar = tutarAlani('TL tutarı', ciz);
+      const cevir = el('div', { sinif: 'sonuc-alani' });
+      const enf = v.yillikEnflasyon(v.sonAy);
+      const miktar = (h, t) => `${E.sayi(t / h.fiyat, 2)} ${h.altin ? 'gram altın' : h.simge}`;
+      const grafik = (seri) => {
+        if (seri.length < 2) return null;
+        const mn = Math.min(...seri), mx = Math.max(...seri), ar = (mx - mn) || 1;
+        const ns = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(ns, 'svg');
+        svg.setAttribute('viewBox', '0 0 300 56'); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('class', 'mini-grafik');
+        const pl = document.createElementNS(ns, 'polyline');
+        pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#FAC775'); pl.setAttribute('stroke-width', '2.5');
+        pl.setAttribute('stroke-linejoin', 'round'); pl.setAttribute('vector-effect', 'non-scaling-stroke');
+        pl.setAttribute('points', seri.map((d, i) => `${(i * 300 / (seri.length - 1)).toFixed(1)},${(4 + (1 - (d - mn) / ar) * 48).toFixed(1)}`).join(' '));
+        svg.append(pl);
+        return el('div', { sinif: 'grafik-kap' }, svg, el('p', { sinif: 'esik-aciklama yalin' }, 'Son 12 ay · iş günleri'));
+      };
+      const ciplerKap = cipler(hepsi.map((h) => [h.kod, h.ad]), secili, (k) => { secili = k; cizKart(); });
+      kok.append(ciplerKap, kart);
+      if (enf !== null) {
+        const satirlar = [['Enflasyon (TÜFE)', degisimMetni(enf)]];
+        for (const h of hepsi) if (h.aylikOrtalamaDegisim !== null) satirlar.push([h.ad, degisimMetni(h.aylikOrtalamaDegisim), h.aylikOrtalamaDegisim >= enf ? 'olumlu' : 'olumsuz']);
+        kok.append(
+          el('h3', { sinif: 'ara-baslik' }, `Enflasyonla karşılaştırma · ${ad(v.sonAy - 12)} → ${ad(v.sonAy)}`),
+          satirKarti(satirlar),
+          el('p', { sinif: 'ipucu', stil: 'margin-top:6px' }, 'Aylık ortalama fiyatlarla. Yeşil: enflasyonun üstünde, kırmızı: altında kaldı.'));
+      }
+      kok.append(el('div', { sinif: 'form', stil: 'margin-top:14px' }, tutar.kap), cevir);
+      function cizKart() {
+        const h = hepsi.find((x) => x.kod === secili);
+        const alt = [`${h.kaynak} · ${E.tarihMetni(h.tarih)}`];
+        if (h.gunlukDegisim !== null) alt.push(`Önceki iş gününe göre ${degisimMetni(h.gunlukDegisim)}`);
+        if (h.yillikDegisim !== null) alt.push(`Bir yılda ${degisimMetni(h.yillikDegisim)}`);
+        kart.textContent = '';
+        kart.append(sonucKarti({ baslik: h.altin ? 'Gram altın' : `1 ${h.ad}`, deger: tl(h.fiyat, 2), alt: alt.join('\n'), ek: grafik(h.grafik) }));
+        ciz();
+      }
+      function ciz() {
+        cevir.textContent = '';
+        const t = tutar.deger;
+        const h = hepsi.find((x) => x.kod === secili);
+        if (t > 0) {
+          cevir.append(satirKarti(hepsi.map((x) => [x.ad, miktar(x, t)])));
+          cevir.append(paylasDugmesi(`${ad(v.sonAy - 12)} ile ${ad(v.sonAy)} arasında enflasyon ${yuzde(enf || 0)}`
+            + hepsi.filter((x) => x.aylikOrtalamaDegisim !== null).map((x) => `, ${x.ad.toLocaleLowerCase('tr')} ${yuzde(x.aylikOrtalamaDegisim)}`).join('') + '.'));
+        } else {
+          cevir.append(ornekKarti(`100.000 TL, ${E.tarihMetni(h.tarih)} fiyatlarıyla ${hepsi.map((x) => miktar(x, 100000)).join(', ')} ediyor.`,
+            () => { tutar.yaz('100.000'); ciz(); }));
+        }
+      }
+      cizKart();
+    },
   };
 
   // ---- veri ve başlatma ---------------------------------------------------

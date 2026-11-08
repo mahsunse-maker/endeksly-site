@@ -51,7 +51,24 @@
         });
       }
     }
-    if (!v.usd.bos) {
+    const gunluk = {};
+    for (const x of E.dovizAltin(v)) gunluk[x.kod] = x;
+    if (gunluk.altin) {
+      const a = gunluk.altin;
+      liste.push({
+        baslik: `${E.tarihMetni(a.tarih)} gram altın`, etiket: null, deger: E.tl(a.fiyat, 2),
+        alt: a.yillikDegisim === null ? 'Borsa İstanbul ortalaması' : `Borsa İstanbul ortalaması · bir yılda ${E.degisimMetni(a.yillikDegisim)}`,
+        seri: son12((m) => v.altin.get(m), s), not: 'Son 12 ay · aylık ortalama',
+      });
+    }
+    if (gunluk.usd) {
+      const d = gunluk.usd;
+      liste.push({
+        baslik: `${E.tarihMetni(d.tarih)} dolar kuru`, etiket: null, deger: E.tl(d.fiyat, 2),
+        alt: d.yillikDegisim === null ? 'TCMB gösterge satış kuru' : `TCMB gösterge kuru · bir yılda ${E.degisimMetni(d.yillikDegisim)}`,
+        seri: son12((m) => v.usd.get(m), s), not: 'Son 12 ay · aylık ortalama',
+      });
+    } else if (!v.usd.bos) {
       const ds = v.usd.son, kur = v.usd.get(ds), d = v.usd.yillik(ds);
       liste.push({
         baslik: `${E.ad(ds)} dolar kuru`, etiket: null, deger: E.tl(kur, 2),
@@ -125,8 +142,12 @@
       if (!z.kesin) document.getElementById('kr-zam').classList.add('kehribar');
     }
     const sonraki = v.sonAy + 1;
-    yaz('kr-sonraki', aciklanmaGunu(sonraki));
-    yaz('kr-sonraki-alt', `${E.ayAdi(sonraki)} verisi`);
+    yaz('kr-sonraki', `Sıradaki enflasyon açıklaması: ${aciklanmaGunu(sonraki)} (${E.ayAdi(sonraki)} verisi)`);
+    const da = E.dovizAltin(v), altin = da.find((x) => x.kod === 'altin'), dolar = da.find((x) => x.kod === 'usd');
+    if (altin) {
+      yaz('kr-doviz', E.tl(altin.fiyat));
+      yaz('kr-doviz-alt', `Gram altın${dolar ? ` · dolar ${E.sayi(dolar.fiyat, 2)}` : ''}`);
+    }
   }
 
   fetch('/veri/endeksly.json', { cache: 'no-cache' })

@@ -207,3 +207,10 @@ a.karo:hover { border-color: var(--ana); transform: translateY(-2px); }
 @media (max-width: 820px) { .kahraman { grid-template-columns: minmax(0, 1fr); } }
 @media (min-width: 821px) { .kahraman { grid-template-columns: minmax(0, 1fr) minmax(0, 460px); } }
 .kahraman-kart { grid-template-columns: minmax(0, 1fr); }
+
+.ara-baslik { font-size: 16px; margin: 18px 4px 8px; }
+.grafik-kap { margin-top: 12px; }
+.mini-grafik { display: block; width: 100%; height: 56px; }
+.esik-aciklama.yalin { border-left: 0; padding-left: 0; }
+.sonraki { display: flex; align-items: center; gap: 6px; color: var(--soluk); font-size: 13px; margin: 0 4px; }
+.sonraki .ms { font-size: 18px; }
