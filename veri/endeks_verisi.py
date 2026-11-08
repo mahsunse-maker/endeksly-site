@@ -48,12 +48,13 @@ BASLANGIC = "01-01-2005"
 # Günlük fiyatlar (son GUNLUK_GUN gün, iş günleri): TCMB gösterge döviz satış
 # kurları ve Borsa İstanbul gram altın ağırlıklı ortalaması (TL/kg → TL/gram).
 EUR_KODU = "TP.DK.EUR.S.YTL"
-GBP_KODU = "TP.DK.GBP.S.YTL"
+# Gümüş (TL/gram): Borsa İstanbul ağırlıklı ortalama (TL/kg), 2018'den beri.
+GUMUS_KODU = "TP.GUMUSPIYASA.AGORT02"
 GUNLUK = [  # (anahtar, ad, seri, bölen)
     ("usd", "ABD doları", USD_KODU, 1),
     ("eur", "Euro", EUR_KODU, 1),
-    ("gbp", "İngiliz sterlini", GBP_KODU, 1),
     ("altin", "Gram altın", ALTIN_BIST_KODU, 1000),
+    ("gumus", "Gram gümüş", GUMUS_KODU, 1000),
 ]
 GUNLUK_GUN = 400
 GUNLUK_GECIKME = 16  # son veri bugünden en fazla bu kadar gün eski olabilir (bayram tatilleri)
@@ -265,7 +266,7 @@ def denetle(cikti):
         if not 0 < d < 500:
             raise SystemExit(f"Mevduat {a} makul değil: {d}")
     son_tufe = max(tufe)
-    for anahtar in ("ufe", "usd", "eur", "gbp", "altin", "bist"):
+    for anahtar in ("ufe", "usd", "eur", "altin", "gumus", "bist"):
         if anahtar not in cikti:
             continue
         seri = cikti[anahtar]["aylar"]
@@ -290,7 +291,7 @@ def olustur(anahtar, bugun):
     ufe = aylik_seri(UFE_KODU, anahtar, bugun)
     usd = aylik_seri(USD_KODU, anahtar, bugun, ortalama=True)
     eur = aylik_seri(EUR_KODU, anahtar, bugun, ortalama=True)
-    gbp = aylik_seri(GBP_KODU, anahtar, bugun, ortalama=True)
+    gumus = {a: d / 1000 for a, d in aylik_seri(GUMUS_KODU, anahtar, bugun, ortalama=True).items()}
     altin = altin_al(anahtar, bugun)
     bist = aylik_seri(BIST_KODU, anahtar, bugun, ortalama=True)
     # Kur ve altında bitmemiş ay da gelir; karşılaştırma tutarlı olsun diye
@@ -298,13 +299,13 @@ def olustur(anahtar, bugun):
     son = max(tufe)
     usd = {a: d for a, d in usd.items() if a <= son}
     eur = {a: d for a, d in eur.items() if a <= son}
-    gbp = {a: d for a, d in gbp.items() if a <= son}
+    gumus = {a: round(d, 2) for a, d in gumus.items() if a <= son}
     gunluk = gunluk_seriler(anahtar, bugun)
     gunluk_denetle(gunluk, bugun)
     altin = {a: d for a, d in altin.items() if a <= son}
     bist = {a: round(d, 2) for a, d in bist.items() if a <= son}
     cikti = {
-        "surum": 1,
+        "surum": 2,  # 2: günlük fiyatlarda sterlin yerine gümüş (08.11.2026)
         "guncelleme": bugun.isoformat(),
         "kaynak": "TCMB Elektronik Veri Dağıtım Sistemi (EVDS); TÜFE verisi TÜİK kaynaklıdır.",
         "tufe": {
@@ -333,11 +334,6 @@ def olustur(anahtar, bugun):
             "seri": EUR_KODU,
             "aylar": {a: round(d, 4) for a, d in eur.items()},
         },
-        "gbp": {
-            "ad": "İngiliz sterlini döviz satış kuru, aylık ortalama (TL)",
-            "seri": GBP_KODU,
-            "aylar": {a: round(d, 4) for a, d in gbp.items()},
-        },
         "altin": {
             "ad": "Altın, TL/gram, aylık ortalama",
             "seriler": [ALTIN_BIST_KODU, ALTIN_ESKI_KODU],
@@ -349,9 +345,14 @@ def olustur(anahtar, bugun):
             "seri": BIST_KODU,
             "aylar": bist,
         },
+        "gumus": {
+            "ad": "Gümüş, TL/gram, aylık ortalama (Borsa İstanbul, 2018'den beri)",
+            "seri": GUMUS_KODU,
+            "aylar": gumus,
+        },
         "gunluk": {
             "ad": "Günlük fiyatlar (iş günleri)",
-            "not": "Döviz: TCMB gösterge niteliğindeki döviz satış kuru. Altın: Borsa İstanbul ağırlıklı ortalama fiyatı, TL/gram. Anlık piyasa fiyatı değildir.",
+            "not": "Döviz: TCMB gösterge niteliğindeki döviz satış kuru. Altın ve gümüş: Borsa İstanbul ağırlıklı ortalama fiyatı, TL/gram. Anlık piyasa fiyatı değildir.",
             "seriler": {
                 a: {"ad": ad, "seri": kod, "gunler": gunluk[a]} for a, ad, kod, _ in GUNLUK
             },
@@ -369,7 +370,7 @@ def main():
     t = cikti["tufe"]["aylar"]
     m = cikti["mevduat_3ay"]["aylar"]
     print(f"TÜFE {min(t)}…{max(t)} ({len(t)} ay), mevduat {min(m)}…{max(m)} ({len(m)} ay) → {hedef}")
-    for k in ("ufe", "usd", "eur", "gbp", "altin", "bist"):
+    for k in ("ufe", "usd", "eur", "altin", "gumus", "bist"):
         a = cikti[k]["aylar"]
         print(f"{k} {min(a)}…{max(a)} ({len(a)} ay), son {a[max(a)]}")
     for k, g in cikti["gunluk"]["seriler"].items():

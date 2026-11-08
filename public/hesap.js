@@ -73,7 +73,7 @@
       this.ufe = new Seri(j.ufe);
       this.usd = new Seri(j.usd);
       this.eur = new Seri(j.eur);
-      this.gbp = new Seri(j.gbp);
+      this.gumus = new Seri(j.gumus);
       this.altin = new Seri(j.altin);
       this.bist = new Seri(j.bist);
       this.gunluk = {};
@@ -177,9 +177,11 @@
   const endeksSonAy = (v, tur) => (v[tur.seri].bos ? null : v[tur.seri].son);
 
   /** Döviz ve altın (uygulamadaki DovizAltin). */
-  const VARLIK_SIRA = ['usd', 'eur', 'gbp', 'altin'];
-  const VARLIK_AD = { usd: 'Dolar', eur: 'Euro', gbp: 'Sterlin', altin: 'Gram altın' };
-  const VARLIK_SIMGE = { usd: '$', eur: '€', gbp: '£', altin: 'gr' };
+  const VARLIK_SIRA = ['usd', 'eur', 'altin', 'gumus'];
+  const VARLIK_AD = { usd: 'Dolar', eur: 'Euro', altin: 'Gram altın', gumus: 'Gram gümüş' };
+  const VARLIK_KISA = { usd: 'Dolar', eur: 'Euro', altin: 'Altın', gumus: 'Gümüş' };
+  const VARLIK_BIRIM = { usd: '$', eur: '€', altin: 'gram\u00A0altın', gumus: 'gram\u00A0gümüş' };
+  const VARLIK_SIMGE = { usd: '$', eur: '€', altin: 'gr', gumus: 'gr' };
   const tarihMetni = (g) => { const [y, m, d] = g.split('-').map(Number); return `${d} ${AYLAR[m - 1]} ${y}`; };
   function dovizAltin(v) {
     const r = [];
@@ -191,10 +193,11 @@
       const [y, m, d] = tarih.split('-');
       const yilBasi = `${Number(y) - 1}-${m}-${d}`;
       const yilOnce = g.tarihte(yilBasi);
-      const aylik = k === 'altin' ? v.altin : v[k];
+      const aylik = v[k];
       r.push({
-        kod: k, ad: VARLIK_AD[k], simge: VARLIK_SIMGE[k], altin: k === 'altin',
-        kaynak: k === 'altin' ? 'Borsa İstanbul ortalaması, TL/gram' : 'TCMB gösterge satış kuru',
+        kod: k, ad: VARLIK_AD[k], kisaAd: VARLIK_KISA[k], birimAdi: VARLIK_BIRIM[k], simge: VARLIK_SIMGE[k],
+        altin: k === 'altin', gram: k === 'altin' || k === 'gumus',
+        kaynak: k === 'altin' || k === 'gumus' ? 'Borsa İstanbul ortalaması, TL/gram' : 'TCMB gösterge satış kuru',
         tarih, fiyat,
         gunlukDegisim: once ? (fiyat / once[1] - 1) * 100 : null,
         yillikDegisim: yilOnce ? (fiyat / yilOnce[1] - 1) * 100 : null,

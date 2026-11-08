@@ -17,11 +17,12 @@ class Testler(unittest.TestCase):
         self.assertEqual(g["usd"], {"2026-11-05": 50.026})
         self.assertEqual(g["altin"], {"2026-11-05": 6624.85})
         self.assertEqual(g["eur"], {})
+        self.assertEqual(g["gumus"], {})
 
     def test_gunluk_denetim(self):
         bugun = dt.date(2026, 11, 8)
         gunler = [bugun - dt.timedelta(days=i) for i in range(200, 0, -1)]
-        iyi = {a: {g.isoformat(): 50.0 for g in gunler} for a in ("usd", "eur", "gbp", "altin")}
+        iyi = {a: {g.isoformat(): 50.0 for g in gunler} for a in ("usd", "eur", "altin", "gumus")}
         ev.gunluk_denetle(iyi, bugun)
         eski = {a: dict(s) for a, s in iyi.items()}
         eski["usd"] = {g: d for g, d in eski["usd"].items() if g < "2026-10-01"}

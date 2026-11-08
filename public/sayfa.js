@@ -399,7 +399,7 @@
       const tutar = tutarAlani('TL tutarı', ciz);
       const cevir = el('div', { sinif: 'sonuc-alani' });
       const enf = v.yillikEnflasyon(v.sonAy);
-      const miktar = (h, t) => `${E.sayi(t / h.fiyat, 2)}\u00A0${h.altin ? 'gram\u00A0altın' : h.simge}`;
+      const miktar = (h, t) => `${E.sayi(t / h.fiyat, 2)}\u00A0${h.birimAdi}`;
       const grafik = (seri) => {
         if (seri.length < 2) return null;
         const mn = Math.min(...seri), mx = Math.max(...seri), ar = (mx - mn) || 1;
@@ -413,7 +413,7 @@
         svg.append(pl);
         return el('div', { sinif: 'grafik-kap' }, svg, el('p', { sinif: 'esik-aciklama yalin' }, 'Son 12 ay · iş günleri'));
       };
-      const ciplerKap = cipler(hepsi.map((h) => [h.kod, h.altin ? 'Altın' : h.ad]), secili, (k) => { secili = k; cizKart(); });
+      const ciplerKap = cipler(hepsi.map((h) => [h.kod, h.kisaAd]), secili, (k) => { secili = k; cizKart(); });
       ciplerKap.classList.add('esit');
       kok.append(ciplerKap, kart);
       if (enf !== null) {
@@ -426,19 +426,19 @@
       }
       let kaynak = 'tl';
       const ondalik = (m) => (m % 1 === 0 ? 0 : 2);
-      const birimMetni = (k, m) => (!k ? tl(m, ondalik(m)) : `${E.sayi(m, ondalik(m))}\u00A0${k.altin ? 'gram\u00A0altın' : k.simge}`);
-      const ornek = (k) => (k === 'tl' ? [100000, '100.000'] : k === 'altin' ? [10, '10'] : [1000, '1.000']);
+      const birimMetni = (k, m) => (!k ? tl(m, ondalik(m)) : `${E.sayi(m, ondalik(m))}\u00A0${k.birimAdi}`);
+      const ornek = (k) => (k === 'tl' ? [100000, '100.000'] : k === 'altin' ? [10, '10'] : k === 'gumus' ? [100, '100'] : [1000, '1.000']);
       const donustur = (k, m) => {
         const tlTutar = k ? m * k.fiyat : m;
         return [...(k ? [['Türk lirası', tl(tlTutar, 2)]] : []),
           ...hepsi.filter((x) => !k || x.kod !== k.kod).map((x) => [x.ad, miktar(x, tlTutar)])];
       };
-      const kaynakCip = cipler([['tl', 'TL'], ...hepsi.map((h) => [h.kod, h.altin ? 'Altın' : h.ad])], kaynak, (k) => { kaynak = k; birimiYaz(); ciz(); });
+      const kaynakCip = cipler([['tl', 'TL'], ...hepsi.map((h) => [h.kod, h.kisaAd])], kaynak, (k) => { kaynak = k; birimiYaz(); ciz(); });
       kaynakCip.classList.add('esit');
       function birimiYaz() {
         const k = hepsi.find((x) => x.kod === kaynak);
-        tutar.etiket(!k ? 'TL tutarı' : k.altin ? 'Gram altın miktarı' : `${k.ad} tutarı`);
-        tutar.birim(!k ? 'TL' : k.altin ? 'gram' : k.simge);
+        tutar.etiket(!k ? 'TL tutarı' : k.gram ? `${k.ad} miktarı` : `${k.ad} tutarı`);
+        tutar.birim(!k ? 'TL' : k.gram ? 'gram' : k.simge);
       }
       kok.append(el('h3', { sinif: 'ara-baslik' }, 'Çevirici'), kaynakCip, el('div', { sinif: 'form', stil: 'margin-top:4px' }, tutar.kap), cevir);
       function cizKart() {
@@ -447,7 +447,7 @@
         if (h.gunlukDegisim !== null) alt.push(`Önceki iş gününe göre ${degisimMetni(h.gunlukDegisim)}`);
         if (h.yillikDegisim !== null) alt.push(`Bir yılda ${degisimMetni(h.yillikDegisim)}`);
         kart.textContent = '';
-        kart.append(sonucKarti({ baslik: h.altin ? 'Gram altın' : `1 ${h.ad}`, deger: tl(h.fiyat, 2), alt: alt.join('\n'), ek: grafik(h.grafik) }));
+        kart.append(sonucKarti({ baslik: h.gram ? h.ad : `1 ${h.ad}`, deger: tl(h.fiyat, 2), alt: alt.join('\n'), ek: grafik(h.grafik) }));
         ciz();
       }
       function ciz() {
