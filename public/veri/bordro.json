@@ -1,0 +1,62 @@
+{
+ "surum": 1,
+ "guncelleme": "2026-11-09",
+ "yillar": [
+  {
+   "yil": 2025,
+   "asgariBrutKurus": 2600550,
+   "sgkTavanKurus": 19504140,
+   "dilimler": [
+    [
+     15800000,
+     15
+    ],
+    [
+     33000000,
+     20
+    ],
+    [
+     120000000,
+     27
+    ],
+    [
+     430000000,
+     35
+    ],
+    [
+     null,
+     40
+    ]
+   ],
+   "kaynak": "GİB Gelir Vergisi Genel Tebliği Seri No 329; ÇSGB asgari ücret tablosu; SGK Genelgesi 2025/2. Doğrulama: 9 Kasım 2026."
+  },
+  {
+   "yil": 2026,
+   "asgariBrutKurus": 3303000,
+   "sgkTavanKurus": 29727000,
+   "dilimler": [
+    [
+     19000000,
+     15
+    ],
+    [
+     40000000,
+     20
+    ],
+    [
+     150000000,
+     27
+    ],
+    [
+     530000000,
+     35
+    ],
+    [
+     null,
+     40
+    ]
+   ],
+   "kaynak": "GİB Gelir Vergisi Genel Tebliği Seri No 332 (Resmî Gazete 31.12.2025, sayı 33124, 5. Mükerrer); ÇSGB asgari ücret tablosu; SGK prime esas kazanç tablosu. Doğrulama: 9 Kasım 2026."
+  }
+ ]
+}
