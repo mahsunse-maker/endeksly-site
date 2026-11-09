@@ -122,7 +122,7 @@
     return d;
   }
 
-  const NANE = '#9FE1CB', KEHRIBAR = '#FAC775', ACIK = 'rgba(225,245,238,0.55)';
+  const NANE = '#9FE1CB', LAVANTA = '#CECBF6', KEHRIBAR = '#FAC775', ACIK = 'rgba(238,237,254,0.55)';
   const NET_ANAHTAR = 'endeksly-net';
 
   // ---- hesaplayıcılar ----------------------------------------------------
@@ -436,7 +436,7 @@
           return;
         }
         const satirlar = [];
-        if (s.dolarBugunTl !== null) satirlar.push(['Dolar olarak tutulsaydı', s.dolarBugunTl, NANE]);
+        if (s.dolarBugunTl !== null) satirlar.push(['Dolar olarak tutulsaydı', s.dolarBugunTl, LAVANTA]);
         if (s.altinBugunTl !== null) satirlar.push(['Altın olarak tutulsaydı', s.altinBugunTl, '#fff']);
         if (s.borsaBugunTl !== null) satirlar.push(['Borsada (BIST 100) tutulsaydı', s.borsaBugunTl, '#85B7EB']);
         const tablo = [['Aradaki enflasyon', degisimMetni(s.enflasyon)]];
