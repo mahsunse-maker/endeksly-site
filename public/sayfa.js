@@ -123,9 +123,114 @@
   }
 
   const NANE = '#9FE1CB', KEHRIBAR = '#FAC775', ACIK = 'rgba(225,245,238,0.55)';
+  const NET_ANAHTAR = 'endeksly-net';
 
   // ---- hesaplayıcılar ----------------------------------------------------
   const HESAPLAR = {
+    net(v, kok) {
+      const yillar = Object.keys(E.BORDRO_YILLARI).map(Number);
+      const veriYili = E.yilOf(v.sonAy);
+      let yil = yillar.includes(veriYili) ? veriYili : yillar[yillar.length - 1];
+      const ORNEK = 50000;
+      const ayAd = (a) => E.AYLAR[a - 1];
+      const para = (d) => tl(d, 2);
+      const eksi = (d) => (d === 0 ? para(0) : `-${para(d)}`);
+      const satirlar = [];
+      const asgari = el('p', { sinif: 'ipucu' });
+      const brut = tutarAlani('Aylık brüt maaş', ciz);
+      const primKap = el('div', { sinif: 'prim-listesi' });
+      const ekle = el('button', { type: 'button', sinif: 'metin-dugme', stil: 'margin-left:0', onclick: primEkle }, '+ Prim ekle');
+      const sonuc = el('div', { sinif: 'sonuc-alani' });
+      const secici = cipler(yillar.map((y) => [y, String(y)]), yil, (y) => { yil = y; ciz(); });
+      secici.classList.add('esit');
+      kok.append(secici, el('div', { sinif: 'form' }, brut.kap), asgari, primKap, ekle, sonuc);
+
+      const primler = () => {
+        const m = {};
+        for (const s of satirlar) if (s.tutar.deger > 0) m[s.ay] = (m[s.ay] || 0) + s.tutar.deger;
+        return m;
+      };
+      function primEkle() {
+        const dolu = new Set(satirlar.map((s) => s.ay));
+        let ay = 1;
+        while (ay < 12 && dolu.has(ay)) ay++;
+        const id = kimlik();
+        const s = { ay, tutar: tutarAlani('Brüt prim', ciz), kap: null };
+        const sec = el('select', { id, onchange: () => { s.ay = Number(sec.value); ciz(); } },
+          E.AYLAR.map((a, i) => el('option', { value: i + 1, selected: i + 1 === ay }, a)));
+        s.kap = el('div', { sinif: 'prim-satir' },
+          el('div', { sinif: 'alan' }, el('label', { for: id }, 'Prim ayı'), sec), s.tutar.kap,
+          el('button', {
+            type: 'button', sinif: 'prim-sil', 'aria-label': 'Primi kaldır',
+            onclick: () => { satirlar.splice(satirlar.indexOf(s), 1); s.kap.remove(); ciz(); },
+          }, '×'));
+        satirlar.push(s);
+        primKap.append(s.kap);
+        ciz();
+      }
+      function reelBaglanti(sade) {
+        const son = v.sonAy;
+        if (yil !== E.yilOf(son) && yil !== E.yilOf(son) - 1) return null;
+        const bilgi = { alan: yil === E.yilOf(son) ? 'son' : 'ilk', net: sade.aylar[E.ayNo(son) - 1].net };
+        return el('a', {
+          sinif: 'cerceve-dugme', href: '/maas-enflasyon-hesaplama/',
+          onclick: () => { try { sessionStorage.setItem(NET_ANAHTAR, JSON.stringify(bilgi)); } catch (_) { /* depolama kapalı */ } },
+        }, 'Bu net ile reel değer hesabı');
+      }
+      function ayKarti(a) {
+        const satir = [];
+        if (a.prim > 0) satir.push(['Maaş', para(a.brut - a.prim)], ['Prim', para(a.prim)]);
+        satir.push([a.prim > 0 ? 'Toplam brüt' : 'Brüt', para(a.brut)]);
+        if (a.sgkMatrahi !== a.brut) satir.push(['SGK matrahı', para(a.sgkMatrahi)]);
+        if (a.devredenSgk > 0) satir.push(['Önceki primden devreden', para(a.devredenSgk)]);
+        satir.push(
+          ['SGK işçi payı (%14)', eksi(a.sgkPrimi)], ['İşsizlik işçi payı (%1)', eksi(a.issizlikPrimi)],
+          ['Gelir vergisi matrahı', para(a.gvMatrahi)], ['Kümülatif matrah', para(a.kumulatifMatrah)],
+          ['Hesaplanan gelir vergisi', para(a.hesaplananGv)], ['Asgari ücret istisnası', eksi(a.gvIstisnasi)],
+          ['Kesilen gelir vergisi', eksi(a.odenecekGv)], ['Hesaplanan damga vergisi', para(a.hesaplananDamga)],
+          ['Asgari ücret istisnası', eksi(a.damgaIstisnasi)], ['Kesilen damga vergisi', eksi(a.odenecekDamga)],
+          ['Net ele geçen', para(a.net), 'olumlu']);
+        const dilim = a.prim > 0 ? `Primli · %${a.dilimYuzde}` : a.odenecekGv === 0 ? '' : `%${a.dilimYuzde} dilimi`;
+        return el('details', {},
+          el('summary', {}, el('span', { sinif: 'ay-ad' }, ayAd(a.ay)), el('span', { sinif: 'ay-dilim' }, dilim), el('b', {}, para(a.net))),
+          satirKarti(satir));
+      }
+      function ciz() {
+        const p = E.BORDRO_YILLARI[yil];
+        asgari.textContent = `${yil} asgari ücreti ${tl(p.asgariBrutKurus / 100, 2)} brüt.`;
+        sonuc.textContent = '';
+        const b = brut.deger, pr = primler(), primVar = Object.keys(pr).length > 0;
+        const s = b > 0 ? E.netMaas(yil, b, pr) : null;
+        if (!s) {
+          const o = E.netMaas(yil, ORNEK);
+          sonuc.append(ornekKarti(
+            `${yil} yılında aylık brüt ${tl(ORNEK)} alan birinin neti ${ayAd(o.enYuksek.ay)} ayında ${tl(o.enYuksek.net)}, ${ayAd(o.enDusuk.ay)} ayında ${tl(o.enDusuk.net)}. Yıllık ortalama ${tl(o.ortalamaNet)}.`,
+            () => { brut.yaz('50.000'); ciz(); }));
+          return;
+        }
+        const sabit = s.enYuksek.net === s.enDusuk.net;
+        sonuc.append(sonucKarti({
+          baslik: `${yil} yıllık ortalama net${primVar ? ' (prim dahil)' : ''}`,
+          deger: tl(s.ortalamaNet),
+          alt: sabit ? 'Net maaş yıl boyunca aynı kalır.'
+            : `En yüksek ${ayAd(s.enYuksek.ay)}: ${tl(s.enYuksek.net)} · En düşük ${ayAd(s.enDusuk.ay)}: ${tl(s.enDusuk.net)}. ${primVar ? 'Prim ayları ve vergi dilimi geçişleri neti değiştirir.' : 'Kümülatif matrah vergi dilimini yükselttikçe net azalır.'}`,
+        }));
+        if (s.tavanAsildi) sonuc.append(el('p', { sinif: 'not' }, `Brütün ${tl(p.sgkTavanKurus / 100, 2)} üzerindeki kısmından SGK ve işsizlik primi kesilmez (${yil} SGK tavanı).`));
+        if (s.asgariAltinda) sonuc.append(el('p', { sinif: 'not' }, `Brüt, ${yil} asgari ücretinin altında. Tam zamanlı çalışmada SGK tabanı asgari ücrettir; kısmi süreli çalışmada bordro bu sonuçtan farklı olabilir.`));
+        sonuc.append(
+          el('div', { sinif: 'ay-listesi' },
+            el('p', { sinif: 'ipucu' }, 'Ay ay net maaş · aya tıklayınca döküm açılır'),
+            s.aylar.map(ayKarti)),
+          satirKarti([
+            ['Yıllık brüt', tl(s.yillikBrut)], ['SGK ve işsizlik primi', tl(s.yillikSgk)],
+            ['Kesilen gelir vergisi', tl(s.yillikGv)], ['Kesilen damga vergisi', tl(s.yillikDamga)],
+            ['Yıllık net', tl(s.yillikNet), 'olumlu'],
+          ]),
+          reelBaglanti(E.netMaas(yil, b)));
+      }
+      ciz();
+    },
+
     kira(v, kok) {
       let yenileme = v.sonAy + 1;
       const tutar = tutarAlani('Şu anki aylık kira', ciz);
@@ -177,11 +282,22 @@
       ozel.append(secIlk.kap, secSon.kap);
       const ilk = tutarAlani('', ciz), son = tutarAlani('', ciz);
       const sonuc = el('div', { sinif: 'sonuc-alani' });
+      // Brütten nete sayfasından gelen net; adrese yazılmaz, tarayıcıdan çıkmaz.
+      let aktarilan = null;
+      try {
+        aktarilan = JSON.parse(sessionStorage.getItem(NET_ANAHTAR));
+        sessionStorage.removeItem(NET_ANAHTAR);
+      } catch (_) { /* depolama kapalı olabilir */ }
+      if (aktarilan) (aktarilan.alan === 'son' ? son : ilk).yaz(E.sayi(aktarilan.net, 2));
       kok.append(
         cipler([[12, '1 yıl'], [24, '2 yıl'], [60, '5 yıl'], [null, 'Özel']], donem, (d) => { donem = d; ozel.hidden = d !== null; ciz(); }),
         ozel,
         el('div', { sinif: 'form iki' }, ilk.kap, son.kap),
-        el('p', { sinif: 'ipucu' }, 'O ayki ve bu ayki net maaşınızı yazın. İkincisi isteğe bağlı.'),
+        el('p', { sinif: 'ipucu' }, !aktarilan
+          ? 'O ayki ve bu ayki net maaşınızı yazın. İkincisi isteğe bağlı.'
+          : aktarilan.alan === 'son'
+            ? `${ad(sonAy())} neti brütten nete hesabından geldi. Önceki ayın neti yazılınca reel değişim çıkar.`
+            : `${ad(ilkAy())} neti brütten nete hesabından geldi. ${ad(sonAy())} neti isteğe bağlı.`),
         sonuc);
       function ciz() {
         ilk.etiket(ad(ilkAy()));

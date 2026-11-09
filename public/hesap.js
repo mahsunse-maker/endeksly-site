@@ -1,5 +1,5 @@
-/* Endeksly hesap çekirdeği: uygulamadaki lib/services/hesaplar.dart ve
- * ek_hesaplar.dart dosyalarının birebir karşılığı. Biri değişirse öteki de
+/* Endeksly hesap çekirdeği: uygulamadaki lib/services/hesaplar.dart,
+ * ek_hesaplar.dart ve net_maas.dart dosyalarının birebir karşılığı. Biri değişirse öteki de
  * değişir; docs/site/test_hesap.mjs iki tarafın sonuçlarını karşılaştırır.
  * Tarayıcıda window.Endeks, Node'da module.exports olarak kullanılır. */
 (function (kok) {
@@ -217,6 +217,97 @@
     return oran === null ? null : { yil: yilOf(ekim), oran };
   }
 
+  /** Brütten nete: lib/services/net_maas.dart ile aynı tablo ve yöntem. Tutarlar
+   * kuruş; her kalem bordro gibi ayrı ayrı kuruşa yuvarlanır. [üst sınır, %]. */
+  const BORDRO_YILLARI = {
+    2025: {
+      yil: 2025, asgariBrutKurus: 2600550, sgkTavanKurus: 19504140,
+      dilimler: [[15800000, 15], [33000000, 20], [120000000, 27], [430000000, 35], [null, 40]],
+      kaynak: 'GİB Gelir Vergisi Genel Tebliği Seri No 329; ÇSGB asgari ücret tablosu; SGK Genelgesi 2025/2. Doğrulama: 9 Kasım 2026.',
+    },
+    2026: {
+      yil: 2026, asgariBrutKurus: 3303000, sgkTavanKurus: 29727000,
+      dilimler: [[19000000, 15], [40000000, 20], [150000000, 27], [530000000, 35], [null, 40]],
+      kaynak: 'GİB Gelir Vergisi Genel Tebliği Seri No 332 (Resmî Gazete 31.12.2025, sayı 33124, 5. Mükerrer); ÇSGB asgari ücret tablosu; SGK prime esas kazanç tablosu. Doğrulama: 9 Kasım 2026.',
+    },
+  };
+  const SGK_ISCI = 14, ISSIZLIK_ISCI = 1, DAMGA_YUZBINDE = 759;
+  const yuvarla = (pay, payda) => Math.floor((pay + Math.floor(payda / 2)) / payda);
+  function kumulatifVergi(matrah, dilimler) {
+    let toplam = 0, alt = 0;
+    for (const [ust, oran] of dilimler) {
+      const ici = (ust === null || matrah < ust ? matrah : ust) - alt;
+      if (ici <= 0) break;
+      toplam += ici * oran;
+      if (ust === null) break;
+      alt = ust;
+    }
+    return toplam;
+  }
+  const donemVergisi = (eski, yeni, d) => yuvarla(kumulatifVergi(yeni, d) - kumulatifVergi(eski, d), 100);
+  function ustDilim(matrah, dilimler) {
+    for (const [ust, oran] of dilimler) if (ust === null || matrah <= ust) return oran;
+    return dilimler[dilimler.length - 1][1];
+  }
+  /** [yil] için aylık sabit brüt ve {ay: brüt prim} ile on iki aylık bordro. */
+  function netMaas(yil, brutTl, primler = {}) {
+    const p = BORDRO_YILLARI[yil];
+    if (!p || !(brutTl > 0)) return null;
+    const maasK = Math.round(brutTl * 100), tavan = p.sgkTavanKurus;
+    const sonrasi = (k) => k - yuvarla(k * SGK_ISCI, 100) - yuvarla(k * ISSIZLIK_ISCI, 100);
+    const asgariMatrah = sonrasi(p.asgariBrutKurus);
+    const damgaAsgari = yuvarla(p.asgariBrutKurus * DAMGA_YUZBINDE, 100000);
+    const aylar = [];
+    let devirler = [], kum = 0, asgariKum = 0, tavanAsildi = false;
+    for (let a = 1; a <= 12; a++) {
+      const g = primler[a];
+      const prim = g > 0 ? Math.round(g * 100) : 0;
+      const brut = maasK + prim;
+      if (brut > tavan) tavanAsildi = true;
+      const maasSpek = Math.min(maasK, tavan);
+      let bosluk = tavan - maasSpek;
+      const primSpek = Math.min(prim, bosluk);
+      bosluk -= primSpek;
+      let devreden = 0;
+      for (const d of devirler) {
+        if (bosluk === 0) break;
+        const e = Math.min(d.kalan, bosluk);
+        d.kalan -= e; bosluk -= e; devreden += e;
+      }
+      for (const d of devirler) d.hak--;
+      devirler = devirler.filter((d) => d.kalan !== 0 && d.hak !== 0);
+      if (prim > primSpek) devirler.push({ kalan: prim - primSpek, hak: 2 });
+      const spek = maasSpek + primSpek + devreden;
+      const sgk = yuvarla(spek * SGK_ISCI, 100), issizlik = yuvarla(spek * ISSIZLIK_ISCI, 100);
+      const matrah = brut - sgk - issizlik;
+      const damga = yuvarla(brut * DAMGA_YUZBINDE, 100000);
+      const yeni = kum + matrah;
+      const hesaplanan = donemVergisi(kum, yeni, p.dilimler);
+      const asgariYeni = asgariKum + asgariMatrah;
+      const istisna = Math.min(hesaplanan, donemVergisi(asgariKum, asgariYeni, p.dilimler));
+      const damgaIst = Math.min(damga, damgaAsgari);
+      const odenecek = hesaplanan - istisna, odenecekDamga = damga - damgaIst;
+      aylar.push({
+        ay: a, brut: brut / 100, prim: prim / 100, sgkMatrahi: spek / 100, devredenSgk: devreden / 100,
+        sgkPrimi: sgk / 100, issizlikPrimi: issizlik / 100, gvMatrahi: matrah / 100, kumulatifMatrah: yeni / 100,
+        dilimYuzde: ustDilim(yeni, p.dilimler), hesaplananGv: hesaplanan / 100, gvIstisnasi: istisna / 100,
+        odenecekGv: odenecek / 100, hesaplananDamga: damga / 100, damgaIstisnasi: damgaIst / 100,
+        odenecekDamga: odenecekDamga / 100, net: (brut - sgk - issizlik - odenecek - odenecekDamga) / 100,
+      });
+      kum = yeni; asgariKum = asgariYeni;
+    }
+    const top = (f) => aylar.reduce((t, a) => t + Math.round(f(a) * 100), 0) / 100;
+    const yillikNet = top((a) => a.net);
+    return {
+      parametre: p, aylar, tavanAsildi, asgariAltinda: maasK < p.asgariBrutKurus,
+      yillikBrut: top((a) => a.brut), yillikNet, yillikSgk: top((a) => a.sgkPrimi + a.issizlikPrimi),
+      yillikGv: top((a) => a.odenecekGv), yillikDamga: top((a) => a.odenecekDamga),
+      yillikGvIstisnasi: top((a) => a.gvIstisnasi), ortalamaNet: yillikNet / 12,
+      enYuksek: aylar.reduce((x, y) => (y.net > x.net ? y : x)),
+      enDusuk: aylar.reduce((x, y) => (y.net < x.net ? y : x)),
+    };
+  }
+
   // Biçim: uygulamadaki lib/services/bicim.dart ile aynı.
   function grupla(tam) {
     let b = '';
@@ -261,7 +352,7 @@
   const Endeks = {
     AYLAR, ay, coz, anahtar, ad, ayAdi, yilOf, ayNo, Veri, Seri, MEMUR_TS,
     kira, maas, zamDonemi, emekliZammi, paraDegeri, ENDEKS_TURLERI, endeksOrani, endeksSonAy,
-    yenidenDegerleme, dovizAltin, tarihMetni, GunlukSeri, sayi, tl, yuzde, degisimMetni, tutarCoz, tutarBicimle,
+    BORDRO_YILLARI, netMaas, yenidenDegerleme, dovizAltin, tarihMetni, GunlukSeri, sayi, tl, yuzde, degisimMetni, tutarCoz, tutarBicimle,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Endeks;
   else kok.Endeks = Endeks;
