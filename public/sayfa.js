@@ -47,6 +47,17 @@
     };
   }
 
+  function tarihAlani(etiket, degisti) {
+    const id = kimlik();
+    const girdi = el('input', { id, type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: 'gg.aa.yyyy', maxlength: 10 });
+    girdi.addEventListener('input', () => { girdi.value = E.tarihBicimle(girdi.value); degisti(); });
+    return {
+      kap: el('div', { sinif: 'alan' }, el('label', { for: id }, etiket), el('div', { sinif: 'tutar' }, girdi)),
+      get deger() { return E.tarihCoz(girdi.value); },
+      yaz(metin) { girdi.value = metin; },
+    };
+  }
+
   function aySecici(etiket, ilk, son, secili, degisti) {
     const id = kimlik();
     const s = el('select', { id, onchange: () => degisti(Number(s.value)) });
@@ -127,6 +138,68 @@
 
   // ---- hesaplayıcılar ----------------------------------------------------
   const HESAPLAR = {
+    emeklilik(v, kok) {
+      const STATU = { a: '4/a SSK', b: '4/b Bağ-Kur', c: '4/c Memur' };
+      const NEDEN = { gun: 'Tarihi prim günü belirliyor.', yas: 'Tarihi yaş şartı belirliyor.', sure: 'Tarihi sigortalılık süresi belirliyor.', yok: 'Şartlar tamam.' };
+      const bugun = new Date();
+      let statu = 'a', cinsiyet = 'erkek';
+      const sayi = (n) => E.sayi(n);
+      const dogum = tarihAlani('Doğum tarihi', ciz);
+      const giris = tarihAlani('İlk sigorta girişi', ciz);
+      const gun = tutarAlani('Şu anki prim günü', ciz);
+      gun.birim('gün');
+      const sonuc = el('div', { sinif: 'sonuc-alani' });
+      let statuKap = cipler(Object.entries(STATU), statu, (x) => { statu = x; ciz(); });
+      let cinsiyetKap = cipler([['kadin', 'Kadın'], ['erkek', 'Erkek']], cinsiyet, (x) => { cinsiyet = x; ciz(); });
+      statuKap.classList.add('esit');
+      cinsiyetKap.classList.add('esit');
+      kok.append(statuKap, cinsiyetKap, el('div', { sinif: 'form iki' }, dogum.kap, giris.kap),
+        el('div', { sinif: 'form' }, gun.kap), el('p', { sinif: 'ipucu' }, 'Girilen bilgiler yalnızca tarayıcıda işlenir.'), sonuc);
+      function ornekGoster() {
+        statu = 'a'; cinsiyet = 'erkek';
+        const s = cipler(Object.entries(STATU), statu, (x) => { statu = x; ciz(); });
+        const c = cipler([['kadin', 'Kadın'], ['erkek', 'Erkek']], cinsiyet, (x) => { cinsiyet = x; ciz(); });
+        s.classList.add('esit'); c.classList.add('esit');
+        statuKap.replaceWith(s); cinsiyetKap.replaceWith(c);
+        statuKap = s; cinsiyetKap = c;
+        dogum.yaz('01.06.1985'); giris.yaz('01.09.2010'); gun.yaz('4.500');
+        ciz();
+      }
+      function ciz() {
+        sonuc.textContent = '';
+        const d = dogum.deger, g = giris.deger, p = gun.deger;
+        const s = d === null || g === null || p === null ? null
+          : E.emeklilikHesapla({ statu, cinsiyet, dogum: d, giris: g, primGun: Math.floor(p), bugun });
+        if (d !== null && g !== null && p !== null && s === null) {
+          sonuc.append(el('p', { sinif: 'uyari' }, 'Tarihler tutarsız görünüyor: tarihler bugünden ileri olamaz, ilk sigorta girişi doğumdan sonra olmalı.'));
+          return;
+        }
+        if (s === null) {
+          const o = E.emeklilikHesapla({ statu: 'a', cinsiyet: 'erkek', dogum: new Date(1985, 5, 1), giris: new Date(2010, 8, 1), primGun: 4500, bugun });
+          sonuc.append(ornekKarti(`1 Haziran 1985 doğumlu, 1 Eylül 2010’da sigortalı olan ve 4.500 günü bulunan 4/a sigortalısı bir erkek, kesintisiz çalışırsa en erken ${E.gunMetni(o.enErken.tarih)} tarihinde emekli olabilir.`, ornekGoster));
+          return;
+        }
+        const r = s.enErken;
+        sonuc.append(sonucKarti({
+          baslik: s.sartlarTamam ? 'Şartlar bugün sağlanıyor' : 'En erken emeklilik',
+          deger: s.sartlarTamam ? 'Bugün' : E.gunMetni(r.tarih),
+          etiket: STATU[statu],
+          alt: [`${s.enErkenYas} yaşında · ${r.ad}${r.kismi ? ' (kısmi aylık)' : ''}.`,
+            r.kalanGun > 0 ? `Kalan prim: ${sayi(r.kalanGun)} gün.` : null,
+            s.sartlarTamam ? null : NEDEN[r.belirleyici]].filter(Boolean).join(' '),
+        }));
+        for (const x of s.rotalar) {
+          sonuc.append(satirKarti([
+            [x.kismi ? `${x.ad} · kısmi aylık` : x.ad, x.tarih.getTime() > s.bugun.getTime() ? E.gunMetni(x.tarih) : 'Bugün'],
+            ['Gereken prim günü', x.kalanGun > 0 ? `${sayi(x.gerekenGun)} · ${sayi(x.kalanGun)} kaldı` : `${sayi(x.gerekenGun)} · tamam`],
+            ['Aranan yaş', x.yas === null ? 'Yok' : String(x.yas)],
+            x.sureYil !== null ? ['Sigortalılık süresi', `${x.sureYil} yıl`] : null,
+          ].filter(Boolean)));
+        }
+        sonuc.append(el('p', { sinif: 'ipucu' }, `${s.grup}. Kesin sonuç SGK kayıtlarına göre belirlenir; e-Devlet’te “Ne Zaman Emekli Olabilirim?” hizmeti vardır.`));
+      }
+      ciz();
+    },
     net(v, kok) {
       const yillar = Object.keys(E.BORDRO_YILLARI).map(Number);
       const veriYili = E.yilOf(v.sonAy);
@@ -623,6 +696,12 @@
   document.addEventListener('DOMContentLoaded', () => {
     const kok = document.querySelector('[data-hesap]');
     if (!kok) return;
+    // Emeklilik hesabı veri dosyasına bağlı değil; dosya inmese de çalışır.
+    if (kok.dataset.hesap === 'emeklilik') {
+      kok.textContent = '';
+      HESAPLAR.emeklilik(null, kok);
+      return;
+    }
     veriAl().then((v) => {
       kok.textContent = '';
       HESAPLAR[kok.dataset.hesap](v, kok);

@@ -1,5 +1,5 @@
 /* Endeksly hesap çekirdeği: uygulamadaki lib/services/hesaplar.dart,
- * ek_hesaplar.dart ve net_maas.dart dosyalarının birebir karşılığı. Biri değişirse öteki de
+ * ek_hesaplar.dart, net_maas.dart ve emeklilik.dart dosyalarının birebir karşılığı. Biri değişirse öteki de
  * değişir; docs/site/test_hesap.mjs iki tarafın sonuçlarını karşılaştırır.
  * Tarayıcıda window.Endeks, Node'da module.exports olarak kullanılır. */
 (function (kok) {
@@ -349,10 +349,126 @@
     return kurus === null ? grupla(tam) : `${grupla(tam)},${kurus}`;
   }
 
+  // ---- emeklilik tarihi (lib/services/emeklilik.dart) ---------------------
+  const gunTarihi = (y, a, g) => new Date(y, a - 1, g);
+  const gunuAl = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const sonra = (a, b) => a.getTime() > b.getTime();
+  const yilEkle = (d, yil) => new Date(d.getFullYear() + yil, d.getMonth(), d.getDate());
+  /** [tarih] itibarıyla doldurulmuş yaş. */
+  function tamYas(dogum, tarih) {
+    let y = tarih.getFullYear() - dogum.getFullYear();
+    if (tarih.getMonth() < dogum.getMonth()
+      || (tarih.getMonth() === dogum.getMonth() && tarih.getDate() < dogum.getDate())) y--;
+    return y;
+  }
+  /** Kesintisiz çalışmada gün şartının dolduğu tarih: ayda 30 gün. */
+  const primGunuSonrasi = (b, gun) => new Date(b.getFullYear(), b.getMonth() + Math.floor(gun / 30), b.getDate() + (gun % 30));
+  /** 5510 m.28: gün şartının dolduğu tarihteki yaş [kadın, erkek]. */
+  function tamAylikYas(t) {
+    const y = t.getFullYear();
+    if (y < 2036) return [58, 60];
+    if (y < 2038) return [59, 61];
+    if (y < 2040) return [60, 62];
+    if (y < 2042) return [61, 63];
+    if (y < 2044) return [62, 64];
+    if (y < 2046) return [63, 65];
+    if (y < 2048) return [64, 65];
+    return [65, 65];
+  }
+  /** 5510 m.28/3: 5400 günlük yolda yaşa üç yıl eklenir, 65'i geçmez. */
+  const kismiYas = (t) => tamAylikYas(t).map((y) => Math.min(y + 3, 65));
+  const KADEME_KADIN = [[1985, 5, 23, 5000], [1986, 5, 23, 5075], [1987, 5, 23, 5150], [1988, 5, 23, 5225],
+    [1989, 5, 23, 5300], [1990, 5, 23, 5375], [1991, 5, 23, 5450], [1992, 5, 23, 5525], [1993, 5, 23, 5600],
+    [1994, 5, 23, 5675], [1995, 5, 23, 5750], [1996, 5, 23, 5825], [1997, 5, 23, 5900], [1999, 9, 8, 5975]];
+  const KADEME_ERKEK = [[1980, 11, 23, 5000], [1982, 5, 23, 5075], [1983, 11, 23, 5150], [1985, 5, 23, 5225],
+    [1986, 11, 23, 5300], [1988, 5, 23, 5375], [1989, 11, 23, 5450], [1991, 5, 23, 5525], [1992, 11, 23, 5600],
+    [1994, 5, 23, 5675], [1995, 11, 23, 5750], [1997, 5, 23, 5825], [1998, 11, 23, 5900], [1999, 9, 8, 5975]];
+  function kademeliGun(giris, cinsiyet) {
+    for (const [y, a, g, gun] of cinsiyet === 'kadin' ? KADEME_KADIN : KADEME_ERKEK) {
+      if (!sonra(giris, gunTarihi(y, a, g))) return gun;
+    }
+    return 5975;
+  }
+  function kademeli5400(giris) {
+    const y = giris.getFullYear();
+    if (y <= 2008) return 4600;
+    if (y >= 2016) return 5400;
+    return 4600 + (y - 2008) * 100;
+  }
+  /** statu: 'a'|'b'|'c', cinsiyet: 'kadin'|'erkek'. Girdiler tutarsızsa null. */
+  function emeklilikHesapla({ statu, cinsiyet, dogum, giris, primGun, bugun }) {
+    const b = gunuAl(bugun), d = gunuAl(dogum), g = gunuAl(giris);
+    if (sonra(d, b) || sonra(g, b) || !sonra(g, d) || primGun < 0) return null;
+    const kadin = cinsiyet === 'kadin';
+    const r = (ad, gerekenGun, { kismi = false, sureYil = null, yasSabit = null, yasTablosu = null } = {}) => {
+      const kalanGun = gerekenGun > primGun ? gerekenGun - primGun : 0;
+      const gunT = primGunuSonrasi(b, kalanGun);
+      const cift = yasTablosu ? yasTablosu(gunT) : yasSabit;
+      const yas = cift === null ? null : (kadin ? cift[0] : cift[1]);
+      let tarih = gunT;
+      let belirleyici = kalanGun > 0 ? 'gun' : 'yok';
+      if (yas !== null) {
+        const t = yilEkle(d, yas);
+        if (sonra(t, tarih)) { tarih = t; belirleyici = 'yas'; }
+      }
+      if (sureYil !== null) {
+        const t = yilEkle(g, sureYil);
+        if (sonra(t, tarih)) { tarih = t; belirleyici = 'sure'; }
+      }
+      return { ad, kismi, gerekenGun, kalanGun, yas, sureYil, tarih, belirleyici };
+    };
+    const yas5860 = [58, 60];
+    let grup, rotalar;
+    if (!sonra(g, gunTarihi(1999, 9, 8))) {
+      grup = '8 Eylül 1999 ve öncesi giriş';
+      if (statu === 'a') rotalar = [r('Yaş şartı olmadan', kademeliGun(g, cinsiyet), { sureYil: kadin ? 20 : 25 })];
+      else if (statu === 'b') rotalar = [r('Yaş şartı olmadan', kadin ? 7200 : 9000)];
+      else rotalar = [r('Yaş şartı olmadan', kadin ? 7200 : 9000), r('61 yaş ve 15 yıl', 5400, { kismi: true, yasSabit: [61, 61] })];
+    } else if (g.getTime() < gunTarihi(2008, 5, 1).getTime()) {
+      grup = '9 Eylül 1999 – 30 Nisan 2008 giriş';
+      if (statu === 'a') {
+        rotalar = [r('Yaş ve 7000 gün', 7000, { yasSabit: yas5860 }),
+          r('Yaş, 25 yıl ve 4500 gün', 4500, { sureYil: 25, yasSabit: yas5860 })];
+      } else if (statu === 'b') {
+        rotalar = [r('Yaş ve 25 tam yıl', 9000, { yasSabit: yas5860 }),
+          r('Yaş ve 15 tam yıl', 5400, { kismi: true, yasSabit: [60, 62] })];
+      } else {
+        rotalar = [r('Yaş ve 25 tam yıl', 9000, { yasSabit: yas5860 }),
+          r('61 yaş ve 15 yıl', 5400, { kismi: true, yasSabit: [61, 61] })];
+      }
+    } else {
+      grup = '1 Mayıs 2008 ve sonrası giriş';
+      const tam = statu === 'a' ? 7200 : 9000;
+      const kismiGun = statu === 'a' ? kademeli5400(g) : 5400;
+      rotalar = [r(`${tam} gün`, tam, { yasTablosu: tamAylikYas }),
+        r(`${kismiGun} gün`, kismiGun, { kismi: true, yasTablosu: kismiYas })];
+    }
+    rotalar.sort((x, y) => x.tarih.getTime() - y.tarih.getTime());
+    const enErken = rotalar[0];
+    return { grup, rotalar, dogum: d, bugun: b, enErken, sartlarTamam: !sonra(enErken.tarih, b), enErkenYas: tamYas(d, enErken.tarih) };
+  }
+  /** "12 Mart 2043" */
+  const gunMetni = (t) => `${t.getDate()} ${AYLAR[t.getMonth()]} ${t.getFullYear()}`;
+  /** "05.03.1985" metnini çözer; geçersiz tarihte null. */
+  function tarihCoz(metin) {
+    const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(metin || '').trim());
+    if (!m) return null;
+    const g = Number(m[1]), a = Number(m[2]), y = Number(m[3]);
+    const d = new Date(y, a - 1, g);
+    return d.getFullYear() === y && d.getMonth() === a - 1 && d.getDate() === g ? d : null;
+  }
+  /** Yazarken "gg.aa.yyyy" biçimi: yalnız rakam alır, noktaları kendisi koyar. */
+  function tarihBicimle(metin) {
+    const r = String(metin || '').replace(/\D/g, '').slice(0, 8);
+    let m = '';
+    for (let i = 0; i < r.length; i++) m += ((i === 2 || i === 4) ? '.' : '') + r[i];
+    return m;
+  }
+
   const Endeks = {
     AYLAR, ay, coz, anahtar, ad, ayAdi, yilOf, ayNo, Veri, Seri, MEMUR_TS,
     kira, maas, zamDonemi, emekliZammi, paraDegeri, ENDEKS_TURLERI, endeksOrani, endeksSonAy,
-    BORDRO_YILLARI, netMaas, yenidenDegerleme, dovizAltin, tarihMetni, GunlukSeri, sayi, tl, yuzde, degisimMetni, tutarCoz, tutarBicimle,
+    BORDRO_YILLARI, netMaas, yenidenDegerleme, dovizAltin, tarihMetni, emeklilikHesapla, gunMetni, tarihCoz, tarihBicimle, GunlukSeri, sayi, tl, yuzde, degisimMetni, tutarCoz, tutarBicimle,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Endeks;
   else kok.Endeks = Endeks;

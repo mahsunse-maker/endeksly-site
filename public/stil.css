@@ -264,3 +264,4 @@ a.kayan-sayfa:hover .kayan-not .ok { transform: translateX(2px); }
 .ay-listesi summary b { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ay-listesi .satirlar-karti { background: none; border: 0; padding: 0 0 8px; }
 a.cerceve-dugme { display: block; box-sizing: border-box; text-align: center; text-decoration: none; }
+.uyari { background: color-mix(in srgb, #FAC775 30%, transparent); border-radius: 12px; padding: 12px; margin: 0; }
