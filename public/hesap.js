@@ -76,6 +76,7 @@
       this.gumus = new Seri(j.gumus);
       this.altin = new Seri(j.altin);
       this.bist = new Seri(j.bist);
+      this.konut = new Seri(j.konut);
       this.gunluk = {};
       const gs = (j.gunluk && j.gunluk.seriler) || {};
       for (const [k, b] of Object.entries(gs)) this.gunluk[k] = new GunlukSeri(b);
@@ -149,20 +150,30 @@
     const kurO = v.usd.get(i), kurS = v.usd.get(son);
     const altO = v.altin.get(i), altS = v.altin.get(son);
     const bistO = v.bist.get(i), bistS = v.bist.get(son);
+    const gumO = v.gumus.get(i), gumS = v.gumus.get(son);
     const dolar = kurO === null ? null : tutar / kurO;
     const gram = altO === null ? null : tutar / altO;
+    const gumusGram = gumO === null ? null : tutar / gumO;
+    let konutSon = null;
+    for (const k of v.konut.m.keys()) if (k <= son && (konutSon === null || k > konutSon)) konutSon = k;
+    const konO = v.konut.get(i);
+    const konutBugunTl = konO === null || konutSon === null || !(konutSon > i) ? null : tutar * v.konut.get(konutSon) / konO;
     const tufeKarsiligi = tutar * b / a;
     const r = {
       ay: i, son, tutar, tufeKarsiligi, dolar, gram,
       dolarBugunTl: dolar === null || kurS === null ? null : dolar * kurS,
       altinBugunTl: gram === null || altS === null ? null : gram * altS,
       borsaBugunTl: bistO === null || bistS === null ? null : tutar * bistS / bistO,
+      gumusGram, gumusBugunTl: gumusGram === null || gumS === null ? null : gumusGram * gumS,
+      konutBugunTl, konutSon: konutBugunTl === null ? null : konutSon,
       enflasyon: (tufeKarsiligi / tutar - 1) * 100,
     };
     const artis = (x) => (x === null ? null : (x / tutar - 1) * 100);
     r.dolarArtisi = artis(r.dolarBugunTl);
     r.altinArtisi = artis(r.altinBugunTl);
     r.borsaArtisi = artis(r.borsaBugunTl);
+    r.gumusArtisi = artis(r.gumusBugunTl);
+    r.konutArtisi = artis(r.konutBugunTl);
     return r;
   }
 

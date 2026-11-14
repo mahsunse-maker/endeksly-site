@@ -502,6 +502,7 @@
             const ekler = [];
             if (o.dolarBugunTl !== null) ekler.push(`dolar olarak tutulsaydı ${tl(o.dolarBugunTl)}`);
             if (o.altinBugunTl !== null) ekler.push(`altın olarak tutulsaydı ${tl(o.altinBugunTl)}`);
+            if (o.konutBugunTl !== null) ekler.push(`konut olarak tutulsaydı ${tl(o.konutBugunTl)}`);
             sonuc.append(ornekKarti(
               `${ad(o.ay)} tarihindeki 100.000 TL, aynı alım gücü için ${ad(o.son)} itibarıyla ${tl(o.tufeKarsiligi)} ediyor.${ekler.length ? ` Aynı para ${ekler.join(', ')}.` : ''}`,
               () => { tutar.yaz('100.000'); ciz(); }));
@@ -509,12 +510,17 @@
           return;
         }
         const satirlar = [];
-        if (s.dolarBugunTl !== null) satirlar.push(['Dolar olarak tutulsaydı', s.dolarBugunTl, LAVANTA]);
+        if (s.gumusBugunTl !== null) satirlar.push(['Gümüş olarak tutulsaydı', s.gumusBugunTl, '#D3D1C7']);
         if (s.altinBugunTl !== null) satirlar.push(['Altın olarak tutulsaydı', s.altinBugunTl, '#fff']);
+        if (s.konutBugunTl !== null) satirlar.push([s.konutSon === s.son ? 'Konut olarak tutulsaydı' : `Konut olarak tutulsaydı (${ad(s.konutSon)})`, s.konutBugunTl, KEHRIBAR]);
         if (s.borsaBugunTl !== null) satirlar.push(['Borsada (BIST 100) tutulsaydı', s.borsaBugunTl, '#85B7EB']);
+        if (s.dolarBugunTl !== null) satirlar.push(['Dolar olarak tutulsaydı', s.dolarBugunTl, LAVANTA]);
+        satirlar.sort((x, y) => y[1] - x[1]);
         const tablo = [['Aradaki enflasyon', degisimMetni(s.enflasyon)]];
         if (s.dolar !== null) tablo.push([`Dolar · o gün ${E.sayi(s.dolar)} $`, degisimMetni(s.dolarArtisi)]);
         if (s.gram !== null) tablo.push([`Altın · o gün ${E.sayi(s.gram, 1)} gram`, degisimMetni(s.altinArtisi)]);
+        if (s.gumusGram !== null) tablo.push([`Gümüş · o gün ${E.sayi(s.gumusGram, s.gumusGram >= 100 ? 0 : 1)} gram`, degisimMetni(s.gumusArtisi)]);
+        if (s.konutArtisi !== null) tablo.push([`Konut · ${ad(s.konutSon)} itibarıyla`, degisimMetni(s.konutArtisi)]);
         if (s.borsaArtisi !== null) tablo.push(['Borsa (BIST 100)', degisimMetni(s.borsaArtisi)]);
         sonuc.append(
           sonucKarti({
@@ -527,6 +533,8 @@
           paylasDugmesi(`${ad(s.ay)} ile ${ad(s.son)} arasında fiyatlar ${yuzde(s.enflasyon)} arttı`
             + (s.dolarArtisi === null ? '' : `, dolar ${yuzde(s.dolarArtisi)}`)
             + (s.altinArtisi === null ? '' : `, gram altın ${yuzde(s.altinArtisi)}`)
+            + (s.gumusArtisi === null ? '' : `, gram gümüş ${yuzde(s.gumusArtisi)}`)
+            + (s.konutArtisi === null ? '' : `, konut ${yuzde(s.konutArtisi)}`)
             + (s.borsaArtisi === null ? '' : `, BIST 100 ${yuzde(s.borsaArtisi)}`) + ' değerlendi.'));
       }
       ciz();

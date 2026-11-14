@@ -85,5 +85,18 @@ class Testler(unittest.TestCase):
             ev.denetle(cikti)
 
 
+    def test_konut_bir_ay_geride_kabul_eski_reddedilir(self):
+        tufe = {f"{y}-{m:02d}": 100.0 for y in (2019, 2020, 2021, 2022) for m in range(1, 13)}
+        konut = {a: 100.0 for a in tufe if a < "2022-12"}
+        cikti = {"tufe": {"aylar": tufe}, "mevduat_3ay": {"aylar": {"2022-01": 20.0}},
+                 "konut": {"aylar": dict(konut)}}
+        ev.denetle(cikti)  # son ay TÜFE'den bir ay geride: kabul
+        cikti["konut"]["aylar"] = {a: d for a, d in konut.items() if a < "2022-06"}
+        with self.assertRaises(SystemExit):
+            ev.denetle(cikti)  # altı ay geride: güncel değil
+        cikti["konut"]["aylar"] = dict(konut, **{"2022-11": 200.0})
+        with self.assertRaises(SystemExit):
+            ev.denetle(cikti)  # aylık sıçrama
+
 if __name__ == "__main__":
     unittest.main()

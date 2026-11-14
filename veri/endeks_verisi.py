@@ -42,6 +42,10 @@ ALTIN_BIST_KODU = "TP.ALTINPIYASA.AGORT02"
 ALTIN_ESKI_KODU = "TP.MK.KUL.YTL"
 # BIST 100 getiri endeksi (temettüler dahil, XU100-CFNNTLTL), iş günü → aylık ortalama.
 BIST_KODU = "TP.MK.G.BILESIK"
+# Konut fiyat endeksi (TCMB, Türkiye, 2010'dan beri, aylık). TÜFE'den yaklaşık
+# bir ay geç açıklanır; bu yüzden son ayı TÜFE'nin son ayından geride olabilir.
+KONUT_KODU = "TP.KFE.TR"
+KONUT_GECIKME_AY = 3  # konut son ayı TÜFE son ayından en fazla bu kadar geride olabilir
 
 BASLANGIC = "01-01-2005"
 
@@ -266,6 +270,21 @@ def denetle(cikti):
         if not 0 < d < 500:
             raise SystemExit(f"Mevduat {a} makul değil: {d}")
     son_tufe = max(tufe)
+    if "konut" in cikti:
+        konut = cikti["konut"]["aylar"]
+        if len(konut) < 36:
+            raise SystemExit(f"konut çok kısa: {len(konut)} ay")
+        y, m = map(int, son_tufe.split("-"))
+        y2, m2 = map(int, max(konut).split("-"))
+        if (y * 12 + m) - (y2 * 12 + m2) > KONUT_GECIKME_AY:
+            raise SystemExit(f"konut son ayı {max(konut)}, TÜFE {son_tufe}; seri güncel değil")
+        for a, d in konut.items():
+            if not d > 0:
+                raise SystemExit(f"konut {a} geçersiz: {d}")
+        aylar_k = sorted(konut)
+        for once, sonra in zip(aylar_k, aylar_k[1:]):
+            if abs(konut[sonra] / konut[once] - 1) > 0.3:
+                raise SystemExit(f"konut {once}→{sonra} aylık değişim makul değil")
     for anahtar in ("ufe", "usd", "eur", "altin", "gumus", "bist"):
         if anahtar not in cikti:
             continue
@@ -294,6 +313,7 @@ def olustur(anahtar, bugun):
     gumus = {a: d / 1000 for a, d in aylik_seri(GUMUS_KODU, anahtar, bugun, ortalama=True).items()}
     altin = altin_al(anahtar, bugun)
     bist = aylik_seri(BIST_KODU, anahtar, bugun, ortalama=True)
+    konut = aylik_seri(KONUT_KODU, anahtar, bugun)
     # Kur ve altında bitmemiş ay da gelir; karşılaştırma tutarlı olsun diye
     # TÜFE'nin son ayından sonrası atılır.
     son = max(tufe)
@@ -304,8 +324,9 @@ def olustur(anahtar, bugun):
     gunluk_denetle(gunluk, bugun)
     altin = {a: d for a, d in altin.items() if a <= son}
     bist = {a: round(d, 2) for a, d in bist.items() if a <= son}
+    konut = {a: round(d, 2) for a, d in konut.items() if a <= son}
     cikti = {
-        "surum": 2,  # 2: günlük fiyatlarda sterlin yerine gümüş (08.11.2026)
+        "surum": 3,  # 2: günlük fiyatlarda sterlin yerine gümüş (08.11.2026); 3: konut fiyat endeksi (14.11.2026)
         "guncelleme": bugun.isoformat(),
         "kaynak": "TCMB Elektronik Veri Dağıtım Sistemi (EVDS); TÜFE verisi TÜİK kaynaklıdır.",
         "tufe": {
@@ -349,6 +370,12 @@ def olustur(anahtar, bugun):
             "ad": "Gümüş, TL/gram, aylık ortalama (Borsa İstanbul, 2018'den beri)",
             "seri": GUMUS_KODU,
             "aylar": gumus,
+        },
+        "konut": {
+            "ad": "Konut fiyat endeksi, Türkiye (TCMB)",
+            "seri": KONUT_KODU,
+            "not": "Ortalama konutun fiyat değişimini gösterir; TÜFE'den yaklaşık bir ay geç açıklanır.",
+            "aylar": konut,
         },
         "gunluk": {
             "ad": "Günlük fiyatlar (iş günleri)",
