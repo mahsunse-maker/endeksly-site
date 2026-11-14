@@ -120,7 +120,7 @@ details p { margin: 10px 0 0; color: var(--soluk); }
 .ipucu { color: var(--soluk); font-size: 14px; margin: -4px 4px 12px; }
 .cipler { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .cip { font: inherit; font-size: 15px; padding: 8px 16px; border-radius: 99px; border: 1px solid var(--cizgi); background: var(--kart); color: var(--murekkep); cursor: pointer; }
-.cip.secili { background: var(--koyu); border-color: var(--koyu); color: #fff; font-weight: 700; }
+.cip.secili { background: var(--secili); border-color: var(--secili); color: var(--secili-yazi); font-weight: 700; }
 .turler { display: grid; gap: 6px; margin-bottom: 12px; }
 .tur { font: inherit; text-align: left; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--cizgi); background: var(--kart); color: var(--murekkep); cursor: pointer; }
 .tur b { display: block; }
