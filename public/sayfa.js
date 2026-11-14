@@ -480,18 +480,22 @@
     },
 
     para(v, kok) {
+      // 'yb' = yıl başından: önceki yılın Aralık ayı (TÜİK "yıl başından bu yana" tabanı).
       let donem = 60, ozel = v.sonAy - 60;
-      const ayOf = () => (donem === null ? ozel : v.sonAy - donem);
+      const yilBasi = E.ay(E.yilOf(v.sonAy) - 1, 12);
+      const ayOf = () => (donem === null ? ozel : donem === 'yb' ? yilBasi : v.sonAy - donem);
       const ozelKap = el('div', { sinif: 'form', hidden: true });
+      const ybNotu = el('p', { sinif: 'not', hidden: true },
+        `Başlangıç ${ad(yilBasi)} sonu, bitiş ${ad(v.sonAy)}: ${E.yilOf(v.sonAy)} yılının Ocak dahil açıklanan bütün ayları. TÜİK'in "yıl başından bu yana" oranıyla aynı taban.`);
       const sec = aySecici('Hangi ay?', v.ilkAy, v.sonAy - 1, ozel, (a) => { ozel = a; ciz(); });
       ozelKap.append(sec.kap);
       const tutar = tutarAlani('', ciz);
       const sonuc = el('div', { sinif: 'sonuc-alani' });
-      const secenekler = [[12, '1 yıl'], [60, '5 yıl'], [120, '10 yıl'], [null, 'Özel']]
-        .filter(([d]) => d === null || d <= v.sonAy - v.ilkAy);
+      const secenekler = [['yb', 'Yıl başından'], [12, '1 yıl'], [60, '5 yıl'], [120, '10 yıl'], [null, 'Özel']]
+        .filter(([d]) => d === null || d === 'yb' || d <= v.sonAy - v.ilkAy);
       kok.append(
-        cipler(secenekler, donem, (d) => { donem = d; ozelKap.hidden = d !== null; ciz(); }),
-        ozelKap, el('div', { sinif: 'form' }, tutar.kap), sonuc);
+        cipler(secenekler, donem, (d) => { donem = d; ozelKap.hidden = d !== null; ybNotu.hidden = d !== 'yb'; ciz(); }),
+        ybNotu, ozelKap, el('div', { sinif: 'form' }, tutar.kap), sonuc);
       function ciz() {
         tutar.etiket(`${ad(ayOf())} tutarı`);
         sonuc.textContent = '';
