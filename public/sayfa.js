@@ -768,13 +768,14 @@
       pp[x.kod] = a; return a.kap;
     });
     const ppSonuc = el('div', { sinif: 'sonuc-alani' });
-    const pazar = el('details', { sinif: 'ft-pazar' },
+    const pazar = el('details', { sinif: 'ft-pazar', id: 'pazar-payi', open: location.hash === '#pazar-payi' },
       el('summary', {}, 'Pazar payı: kendi şube ya da bölge rakamlarıyla'),
       el('p', { sinif: 'ipucu' }, 'Rakamlar seçili il ya da illerin, seçili banka türündeki toplamıyla karşılaştırılır. Yalnızca bu tarayıcıda hesaplanır, hiçbir yere gönderilmez ve saklanmaz.'),
       el('div', { sinif: 'alan' }, el('label', {}, 'Dönem'), ppDonem),
       el('div', { sinif: 'form' }, ppAlanlar), ppSonuc);
 
     kok.append(gosterge, turKap, secimKap, sonuc, haritaKarti, alt, pazar);
+    if (location.hash === '#pazar-payi') setTimeout(() => pazar.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
 
     function ciz() {
       const yer = f.secim(secili);
