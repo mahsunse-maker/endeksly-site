@@ -1,0 +1,40 @@
+# FinTürk raporlarının verisini (il bazında kredi ve mevduat) BDDK'dan alır, finturk.json'u günceller.
+# Anahtar gerekmez. FinTürk çeyreklik (Mart, Haziran, Eylül, Aralık) ve dönem
+# sonundan yaklaşık bir ay sonra yayımlanır; haftada bir bakmak yeterli,
+# betik veri değişmediyse dosyaya dokunmaz.
+# Yalnızca açık yayın deposunda (Cloudflare Pages'e bağlı) çalışır.
+name: FinTürk verisi
+
+on:
+  schedule:
+    - cron: "15 7 * * 1" # pazartesi 10:15 TSİ
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  guncelle:
+    if: github.repository == 'mahsunse-maker/endeksly-site'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Testler
+        run: python -m unittest discover -s veri -p "test_finturk.py"
+      - name: Veriyi al
+        run: python veri/finturk.py public/veri/finturk.json
+      - name: Değiştiyse kaydet
+        run: |
+          if git diff --quiet -- public/veri/finturk.json && git ls-files --error-unmatch public/veri/finturk.json >/dev/null 2>&1; then
+            echo "Değişiklik yok."
+            exit 0
+          fi
+          git config user.name "finturk-verisi"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/veri/finturk.json
+          git commit -m "FinTürk verisi: $(date +%Y-%m-%d)"
+          git pull --rebase
+          git push
