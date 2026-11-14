@@ -265,3 +265,41 @@ a.kayan-sayfa:hover .kayan-not .ok { transform: translateX(2px); }
 .ay-listesi .satirlar-karti { background: none; border: 0; padding: 0 0 8px; }
 a.cerceve-dugme { display: block; box-sizing: border-box; text-align: center; text-decoration: none; }
 .uyari { background: color-mix(in srgb, #F2945F 30%, transparent); border-radius: 12px; padding: 12px; margin: 0; }
+
+/* FinTürk raporları */
+.ft-secim { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; }
+.ft-etiketler { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ft-etiket { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--cizgi); background: var(--kart); color: var(--murekkep); }
+button.ft-etiket { cursor: pointer; }
+.ft-secim-alanlari { display: flex; gap: 8px; }
+.ft-secim-alanlari select { font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--cizgi); background: var(--kart); color: var(--murekkep); }
+.ft-kart { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 20px; padding: 16px; }
+.ft-kart-baslik { font-weight: 700; margin-bottom: 10px; }
+.ft-harita { display: block; width: 100%; height: auto; }
+.ft-harita path { stroke: var(--kart); stroke-width: 0.8; cursor: pointer; outline: none; }
+.ft-harita path:hover, .ft-harita path:focus-visible { stroke: var(--murekkep); stroke-width: 1.4; }
+.ft-harita path.secili { stroke: var(--kehribar); stroke-width: 2.4; }
+.ft-olcek { margin: 10px 0 4px; }
+.ft-olcek-renkler { display: grid; grid-template-columns: repeat(5, 1fr); height: 10px; border-radius: 6px; overflow: hidden; }
+.ft-olcek-uclar { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--soluk); margin-top: 4px; }
+.ft-grafik { margin-top: 14px; }
+.ft-grafik span { display: block; color: #A9ADB4; font-size: 12.5px; margin-top: 2px; }
+.ft-cizgi { display: block; width: 100%; height: 48px; }
+.ft-cubuklar { display: grid; gap: 4px; }
+.ft-cubuk { font: inherit; color: inherit; background: none; border: 0; padding: 6px 4px; border-radius: 10px; width: 100%; text-align: left;
+  display: grid; grid-template-columns: minmax(110px, 34%) 1fr auto; align-items: center; gap: 10px; }
+button.ft-cubuk { cursor: pointer; }
+button.ft-cubuk:hover { background: var(--zemin); }
+.ft-cubuk.secili { background: var(--acik); }
+.ft-cubuk-ad { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ft-iz { height: 8px; border-radius: 5px; background: var(--zemin); overflow: hidden; }
+.ft-iz span { display: block; height: 100%; border-radius: 5px; background: var(--ana); }
+.ft-cubuk b { font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ft-tumu summary, .ft-pazar summary { cursor: pointer; font-weight: 700; padding: 8px 4px; }
+.ft-pazar { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 20px; padding: 10px 16px 16px; margin-top: 10px; }
+.ft-pazar .form { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
+.ft-secili { color: var(--ana); }
+@media (max-width: 560px) {
+  .ft-pazar .form { grid-template-columns: 1fr; }
+  .ft-cubuk { grid-template-columns: minmax(96px, 40%) 1fr auto; gap: 8px; }
+}

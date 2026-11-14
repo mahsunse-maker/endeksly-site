@@ -696,6 +696,177 @@
     },
   };
 
+  // ---- FinTürk raporları (uygulamadaki FinTürk ekranlarının karşılığı) -------
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function svg(etiket, ozellik) {
+    const d = document.createElementNS(SVG_NS, etiket);
+    for (const [k, v] of Object.entries(ozellik || {})) d.setAttribute(k, v);
+    return d;
+  }
+  const trSirala = (a, b) => a.localeCompare(b, 'tr');
+
+  /** Küçük çizgi grafik (son dokuz çeyrek). */
+  function cizgi(degerler) {
+    if (degerler.length < 2) return null;
+    const en = Math.min(...degerler), eb = Math.max(...degerler), ar = eb - en || 1;
+    const x = (i) => (i / (degerler.length - 1)) * 296 + 2;
+    const y = (d) => 46 - ((d - en) / ar) * 42;
+    const s = svg('svg', { viewBox: '0 0 300 50', preserveAspectRatio: 'none', class: 'ft-cizgi', 'aria-hidden': 'true' });
+    s.append(svg('polyline', { points: degerler.map((d, i) => `${x(i)},${y(d)}`).join(' '), fill: 'none', stroke: KEHRIBAR, 'stroke-width': 2.5, 'vector-effect': 'non-scaling-stroke' }));
+    const son = degerler.length - 1;
+    s.append(svg('circle', { cx: x(son), cy: y(degerler[son]), r: 3.5, fill: KEHRIBAR }));
+    return s;
+  }
+
+  function finturkSayfasi(f, harita, kok) {
+    let g = 'takip', tur = 'sektor', secili = [];
+    const metin = (d) => (d === null ? '—' : E.GOSTERGELER.find((x) => x.kod === g).oran ? yuzde(d) : E.binTlMetni(d));
+    const turlerOf = () => (g === 'mevduat' ? E.BANKA_TURLERI.filter((t) => t.kod !== 'kalkinma') : E.BANKA_TURLERI);
+
+    const gosterge = cipler([['mevduat', 'Mevduat'], ['nakdi', 'Nakdi kredi'], ['gayrinakdi', 'Gayrinakdi'], ['takip', 'Takip oranı']], g,
+      (x) => { g = x; if (g === 'mevduat' && tur === 'kalkinma') tur = 'sektor'; turKap.replaceWith(turKap = turSecici()); ciz(); });
+    const turSecici = () => cipler(turlerOf().map((t) => [t.kod, t.ad]), tur, (x) => { tur = x; ciz(); });
+    let turKap = turSecici();
+
+    // İl seçimi: haritaya dokunma ya da listeden ekleme; hiç il = Türkiye.
+    const ilSec = el('select', { 'aria-label': 'İl ekle', onchange: () => { const p = Number(ilSec.value); if (p && !secili.includes(p)) secili.push(p); ilSec.value = ''; ciz(); } });
+    ilSec.append(el('option', { value: '' }, '+ İl ekle'));
+    for (const il of [...f.iller].sort((a, b) => trSirala(a.ad, b.ad))) ilSec.append(el('option', { value: il.plaka }, il.ad));
+    const bolgeSec = el('select', { 'aria-label': 'Bölge seç', onchange: () => { const b = bolgeSec.value; if (b) secili = f.iller.filter((il) => il.bolge === b).map((il) => il.plaka); bolgeSec.value = ''; ciz(); } });
+    bolgeSec.append(el('option', { value: '' }, 'Bölge seç'));
+    for (const b of E.BOLGELER) bolgeSec.append(el('option', { value: b }, b));
+    const etiketler = el('div', { sinif: 'ft-etiketler' });
+    const secimKap = el('div', { sinif: 'ft-secim' }, etiketler, el('div', { sinif: 'ft-secim-alanlari' }, ilSec, bolgeSec));
+
+    // Harita: her il bir yol; renk göstergeye göre, seçili iller çerçeveli.
+    const haritaSvg = svg('svg', { viewBox: `0 0 ${harita.genislik} ${harita.yukseklik}`, class: 'ft-harita', role: 'img' });
+    const yollar = {};
+    for (const [plaka, halkalar] of Object.entries(harita.iller)) {
+      const d = halkalar.map((h) => { let m = ''; for (let i = 0; i < h.length; i += 2) m += `${i ? 'L' : 'M'}${h[i]} ${h[i + 1]}`; return `${m}Z`; }).join('');
+      const yol = svg('path', { d, 'fill-rule': 'evenodd', tabindex: 0 });
+      const p = Number(plaka);
+      const ilAdi = f.iller[p - 1].ad;
+      const baslik = svg('title', {}); baslik.textContent = ilAdi; yol.append(baslik);
+      const sec = () => { secili = secili.includes(p) ? secili.filter((x) => x !== p) : [...secili, p]; ciz(); };
+      yol.addEventListener('click', sec);
+      yol.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sec(); } });
+      yollar[p] = yol; haritaSvg.append(yol);
+    }
+    const olcekKap = el('div', { sinif: 'ft-olcek' });
+    const haritaKarti = el('div', { sinif: 'ft-kart' }, el('div', { sinif: 'ft-kart-baslik' }, 'İllere göre'), haritaSvg, olcekKap,
+      el('p', { sinif: 'ipucu' }, 'İle dokununca seçime eklenir, yeniden dokununca çıkar. Birden çok il seçilince toplamları gösterilir.'));
+
+    const sonuc = el('div', { sinif: 'sonuc-alani' });
+    const alt = el('div', { sinif: 'sonuc-alani' });
+
+    // Pazar payı: kendi şube ya da bölge rakamları; tarayıcıdan çıkmaz, saklanmaz.
+    const pp = {};
+    const ppDonem = el('select', { 'aria-label': 'Dönem', onchange: () => ciz() });
+    f.donemler.forEach((d, i) => ppDonem.append(el('option', { value: i, selected: i === f.donemler.length - 1 }, E.donemAdi(d))));
+    const ppAlanlar = E.GOSTERGELER.map((x) => {
+      const a = tutarAlani(x.kod === 'takip' ? 'Takipteki kredi' : x.kod === 'nakdi' ? 'Nakdi kredi (takipteki dahil)' : x.ad, () => ciz());
+      pp[x.kod] = a; return a.kap;
+    });
+    const ppSonuc = el('div', { sinif: 'sonuc-alani' });
+    const pazar = el('details', { sinif: 'ft-pazar' },
+      el('summary', {}, 'Pazar payı: kendi şube ya da bölge rakamlarıyla'),
+      el('p', { sinif: 'ipucu' }, 'Rakamlar seçili il ya da illerin, seçili banka türündeki toplamıyla karşılaştırılır. Yalnızca bu tarayıcıda hesaplanır, hiçbir yere gönderilmez ve saklanmaz.'),
+      el('div', { sinif: 'alan' }, el('label', {}, 'Dönem'), ppDonem),
+      el('div', { sinif: 'form' }, ppAlanlar), ppSonuc);
+
+    kok.append(gosterge, turKap, secimKap, sonuc, haritaKarti, alt, pazar);
+
+    function ciz() {
+      const yer = f.secim(secili);
+      const il = secili.length === 1 ? yer : null;
+      const go = E.GOSTERGELER.find((x) => x.kod === g);
+      const turAdi = E.BANKA_TURLERI.find((t) => t.kod === tur).ad;
+
+      etiketler.textContent = '';
+      if (!secili.length) etiketler.append(el('span', { sinif: 'ft-etiket' }, 'Türkiye geneli'));
+      for (const p of secili) etiketler.append(el('button', { type: 'button', sinif: 'ft-etiket', 'aria-label': `${f.iller[p - 1].ad} seçimden çıkar`, onclick: () => { secili = secili.filter((x) => x !== p); ciz(); } }, f.iller[p - 1].ad, ' ×'));
+      if (secili.length) etiketler.append(el('button', { type: 'button', sinif: 'metin-dugme', onclick: () => { secili = []; ciz(); } }, 'Türkiye geneli'));
+
+      // Ana kart.
+      const d = yer.deger(g, tur), yil = yer.yillikDegisim(g, tur), once = yer.birYilOnce(g, tur);
+      const satirlar = [];
+      if (!secili.length) satirlar.push('81 ilin toplamı, yurt dışı şubeler hariç.');
+      else if (go.oran) {
+        satirlar.push(`Türkiye ${metin(f.turkiye.deger(g, tur))}`);
+        if (il) { const s = f.sira(g, tur, il); if (s) satirlar.push(`${s[1]} il içinde oranı en yüksek ${s[0]}. il`); }
+      } else {
+        const p = f.turkiyePayi(g, tur, yer); if (p !== null) satirlar.push(`Türkiye payı ${yuzde(p)}`);
+        if (il) { const s = f.sira(g, tur, il); if (s) satirlar.push(`${s[1]} il içinde ${s[0]}. sırada`); }
+      }
+      if (yil !== null) satirlar.push(go.oran ? `Bir yıl önce ${metin(once)} (${E.puan(yil)})` : `Bir yılda ${degisimMetni(yil)}`);
+      sonuc.textContent = '';
+      sonuc.append(sonucKarti({
+        baslik: tur === 'sektor' ? `${yer.ad} · ${go.ad}` : `${yer.ad} · ${turAdi}`,
+        deger: d === null ? 'Yayımlanmıyor' : metin(d), etiket: E.donemAdi(f.donem),
+        alt: satirlar.join('\n'),
+        ek: el('div', { sinif: 'ft-grafik' }, cizgi(yer.seri(g, tur)), el('span', {}, `${E.donemAdi(f.donemler[0])} – ${E.donemAdi(f.donem)}`)),
+      }));
+
+      // Harita renkleri.
+      const degerler = {};
+      for (const x of f.iller) { const v = x.deger(g, tur); if (v !== null) degerler[x.plaka] = v; }
+      const olcek = E.renkOlcegi(Object.values(degerler));
+      for (const [p, yol] of Object.entries(yollar)) {
+        const v = degerler[p];
+        yol.setAttribute('fill', olcek && v !== undefined ? olcek.renk(v) : 'var(--cizgi)');
+        yol.classList.toggle('secili', secili.includes(Number(p)));
+        yol.querySelector('title').textContent = `${f.iller[p - 1].ad}: ${v === undefined ? 'yayımlanmıyor' : metin(v)}`;
+      }
+      haritaSvg.setAttribute('aria-label', `Türkiye haritası, illere göre ${go.ad}`);
+      olcekKap.textContent = '';
+      if (olcek) {
+        olcekKap.append(el('div', { sinif: 'ft-olcek-renkler' }, ['#FCEDE6', '#F6C9B5', '#F0997B', '#D85A30', '#8A3418'].map((c) => el('span', { stil: `background:${c}` }))),
+          el('div', { sinif: 'ft-olcek-uclar' }, el('span', {}, metin(olcek.sinirlar[0])), el('span', {}, metin(olcek.sinirlar[5]))));
+      }
+
+      // Banka türleri, bölgeler, il sıralaması.
+      alt.textContent = '';
+      alt.append(el('div', { sinif: 'ft-kart' }, el('div', { sinif: 'ft-kart-baslik' }, `Banka türüne göre · ${yer.ad}`),
+        satirKarti(turlerOf().map((t) => {
+          const v = yer.deger(g, t.kod);
+          const pay = !go.oran && t.kod !== 'sektor' && v !== null && yer.tutar(g, 'sektor') ? ` · %${E.sayi(v / yer.tutar(g, 'sektor') * 100, 1)}` : '';
+          return [t.ad, v === null ? 'Yayımlanmıyor' : metin(v) + pay, t.kod === tur ? 'ft-secili' : null];
+        }))));
+      const cubukSatirlari = (liste, adOf, tikla) => {
+        const enB = Math.max(...liste.map((x) => x.deger(g, tur))) || 1;
+        return el('div', { sinif: 'ft-cubuklar' }, liste.map((x, i) => el(tikla ? 'button' : 'div', {
+          type: tikla ? 'button' : null, sinif: `ft-cubuk${tikla && secili.includes(x.plaka) ? ' secili' : ''}`,
+          onclick: tikla ? () => tikla(x) : null,
+        }, el('span', { sinif: 'ft-cubuk-ad' }, adOf(x, i)),
+        el('span', { sinif: 'ft-iz' }, el('span', { stil: `width:${Math.max(2, x.deger(g, tur) / enB * 100)}%` })),
+        el('b', {}, metin(x.deger(g, tur))))));
+      };
+      const bolgeler = f.siraliBolgeler(g, tur);
+      if (bolgeler.length) alt.append(el('div', { sinif: 'ft-kart' }, el('div', { sinif: 'ft-kart-baslik' }, 'Bölgelere göre'), cubukSatirlari(bolgeler, (b) => b.ad, null)));
+      const sira = f.sirali(g, tur);
+      if (sira.length) {
+        const tikla = (x) => { secili = [x.plaka]; ciz(); window.scrollTo({ top: kok.offsetTop - 80, behavior: 'smooth' }); };
+        alt.append(el('div', { sinif: 'ft-kart' }, el('div', { sinif: 'ft-kart-baslik' }, `${sira.length} il sıralaması`),
+          cubukSatirlari(sira.slice(0, 10), (x, i) => `${i + 1}. ${x.ad}`, tikla),
+          sira.length > 10 ? el('details', { sinif: 'ft-tumu' }, el('summary', {}, 'Bütün iller'), cubukSatirlari(sira.slice(10), (x, i) => `${i + 11}. ${x.ad}`, tikla)) : null));
+      }
+
+      // Pazar payı sonucu.
+      ppSonuc.textContent = '';
+      const k = {}; for (const x of E.GOSTERGELER) k[x.kod] = pp[x.kod].deger;
+      if (!E.GOSTERGELER.some((x) => k[x.kod] > 0)) {
+        ppSonuc.append(el('p', { sinif: 'ipucu' }, 'En az bir rakam yazılınca pay burada görünür.'));
+        return;
+      }
+      const r = E.pazarPayi(yer, tur, Number(ppDonem.value), k);
+      const sat = r.paylar.map((x) => [`${E.GOSTERGELER.find((y) => y.kod === x.gosterge).ad} payı`, x.pay === null ? '—' : `%${E.sayi(x.pay, x.pay < 1 ? 3 : 2)}${x.asiyor ? ' (toplamı aşıyor)' : ''}`]);
+      if (r.kendiTakipOrani !== null) sat.push(['Takip oranınız', `${yuzde(r.kendiTakipOrani)}${r.takipFarki === null ? '' : ` (${E.puan(r.takipFarki)})`}`]);
+      if (r.kendiKrediMevduat !== null) sat.push(['Kredi / mevduat', `${yuzde(r.kendiKrediMevduat)}${r.piyasaKrediMevduat === null ? '' : ` · piyasa ${yuzde(r.piyasaKrediMevduat)}`}`]);
+      ppSonuc.append(el('p', { sinif: 'ipucu' }, `${yer.ad} · ${turAdi} · ${E.donemAdi(f.donemler[Number(ppDonem.value)])} toplamına göre`), satirKarti(sat));
+    }
+    ciz();
+  }
+
   // ---- veri ve başlatma ---------------------------------------------------
   let veriSozu = null;
   function veriAl() {
@@ -713,6 +884,21 @@
     if (kok.dataset.hesap === 'emeklilik') {
       kok.textContent = '';
       HESAPLAR.emeklilik(null, kok);
+      return;
+    }
+    // FinTürk: BDDK verisi (her pazartesi güncellenir) ve il sınırları.
+    if (kok.dataset.hesap === 'finturk') {
+      const al = (u) => fetch(u, { cache: 'no-cache' }).then((y) => { if (!y.ok) throw new Error(y.status); return y.json(); });
+      Promise.all([al('/veri/finturk.json'), al('/harita/iller.json')]).then(([j, h]) => {
+        const f = new E.Finturk(j);
+        kok.textContent = '';
+        finturkSayfasi(f, h, kok);
+        const g = document.querySelector('[data-guncelleme]');
+        if (g) g.textContent = `Veri: ${f.kaynak} Son dönem: ${E.donemAdi(f.donem)}. Harita: alpers/Turkey-Maps-GeoJSON (Apache 2.0).`;
+      }).catch(() => {
+        kok.textContent = '';
+        kok.append(el('p', { sinif: 'not' }, 'Veri yüklenemedi. Sayfayı yenileyerek yeniden deneyebilirsiniz.'));
+      });
       return;
     }
     veriAl().then((v) => {

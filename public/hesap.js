@@ -482,10 +482,146 @@
     return m;
   }
 
+
+  // ---- FinTürk (BDDK, illere göre) — lib/models/finturk.dart karşılığı ----
+  const BANKA_TURLERI = [
+    { kod: 'sektor', ad: 'Tüm bankalar' },
+    { kod: 'mevduat', ad: 'Mevduat bankaları' },
+    { kod: 'katilim', ad: 'Katılım bankaları' },
+    { kod: 'kalkinma', ad: 'Kalkınma ve yatırım bankaları' },
+  ];
+  const GOSTERGELER = [
+    { kod: 'mevduat', alan: 'mevduat', ad: 'Mevduat', oran: false },
+    { kod: 'nakdi', alan: 'nakdi', ad: 'Nakdi kredi', oran: false },
+    { kod: 'gayrinakdi', alan: 'gayrinakdi', ad: 'Gayrinakdi kredi', oran: false },
+    { kod: 'takip', alan: 'takipteki', ad: 'Takipteki krediler (NPL)', oran: true },
+  ];
+  const BOLGELER = ['Marmara', 'Ege', 'Akdeniz', 'İç Anadolu', 'Karadeniz', 'Doğu Anadolu', 'Güneydoğu Anadolu'];
+  const gostergeOf = (kod) => GOSTERGELER.find((g) => g.kod === kod);
+
+  /** Bir il, bölge ya da Türkiye: { ad, plaka, bolge, turler: {sektor: {nakdi: [...], ...}}, n }. */
+  class FinturkYer {
+    constructor(ad, turler, n, plaka = null, bolge = null) {
+      this.ad = ad; this.turler = turler; this.n = n; this.plaka = plaka; this.bolge = bolge;
+    }
+    tutar(g, t, i) { const d = this.turler[t][gostergeOf(g).alan]; const x = d[i === undefined ? this.n - 1 : i]; return x === undefined ? null : x; }
+    takipOrani(t, i) {
+      const n = this.tutar('nakdi', t, i), k = this.tutar('takip', t, i);
+      return n === null || k === null || n <= 0 ? null : k / n * 100;
+    }
+    deger(g, t, i) { return gostergeOf(g).oran ? this.takipOrani(t, i) : this.tutar(g, t, i); }
+    seri(g, t) { const l = []; for (let i = 0; i < this.n; i++) { const d = this.deger(g, t, i); if (d !== null) l.push(d); } return l; }
+    birYilOnce(g, t) { return this.n > 4 ? this.deger(g, t, this.n - 5) : null; }
+    yillikDegisim(g, t) {
+      const simdi = this.deger(g, t), once = this.birYilOnce(g, t);
+      if (simdi === null || once === null) return null;
+      if (gostergeOf(g).oran) return simdi - once;
+      return once <= 0 ? null : (simdi / once - 1) * 100;
+    }
+  }
+
+  function finturkTopla(ad, liste) {
+    const n = liste[0].n, turler = {};
+    for (const t of BANKA_TURLERI) {
+      turler[t.kod] = {};
+      for (const g of GOSTERGELER) {
+        const dizi = [];
+        for (let i = 0; i < n; i++) {
+          let hep = true, top = 0;
+          for (const y of liste) { const x = y.tutar(g.kod, t.kod, i); if (x !== null) { hep = false; top += x; } }
+          dizi.push(hep ? null : top);
+        }
+        turler[t.kod][g.alan] = dizi;
+      }
+    }
+    return new FinturkYer(ad, turler, n);
+  }
+
+  /** finturk.json → { donem, donemler, kaynak, guncelleme, iller, turkiye, bolgeler } ya da null. */
+  class Finturk {
+    constructor(j) {
+      if (!j || j.surum !== 1 || !Array.isArray(j.iller) || j.iller.length !== 81) throw new Error('finturk biçimi');
+      this.donem = j.donem; this.donemler = j.donemler; this.kaynak = j.kaynak; this.guncelleme = j.guncelleme;
+      const n = j.donemler.length;
+      this.iller = j.iller.map((o, i) => {
+        if (o.plaka !== i + 1 || !BOLGELER.includes(o.bolge)) throw new Error('il');
+        const turler = {};
+        for (const t of BANKA_TURLERI) {
+          const k = o[t.kod] || {};
+          turler[t.kod] = {};
+          for (const g of GOSTERGELER) {
+            const d = k[g.alan];
+            if (!Array.isArray(d) || d.length !== n) throw new Error('dizi');
+            turler[t.kod][g.alan] = d.map((x) => (x === null ? null : Number(x)));
+          }
+        }
+        return new FinturkYer(o.ad, turler, n, o.plaka, o.bolge);
+      });
+      this.turkiye = finturkTopla('Türkiye', this.iller);
+      this.bolgeToplamlari = {};
+      for (const b of BOLGELER) this.bolgeToplamlari[b] = finturkTopla(b, this.iller.filter((il) => il.bolge === b));
+    }
+    sirali(g, t) { return this.iller.filter((il) => il.deger(g, t) !== null).sort((a, b) => b.deger(g, t) - a.deger(g, t)); }
+    siraliBolgeler(g, t) { return Object.values(this.bolgeToplamlari).filter((b) => b.deger(g, t) !== null).sort((a, b) => b.deger(g, t) - a.deger(g, t)); }
+    sira(g, t, il) { const l = this.sirali(g, t); const i = l.findIndex((x) => x.plaka === il.plaka); return i < 0 ? null : [i + 1, l.length]; }
+    secim(plakalar) {
+      if (!plakalar.length) return this.turkiye;
+      const liste = this.iller.filter((il) => plakalar.includes(il.plaka));
+      if (liste.length === 1) return liste[0];
+      for (const b of BOLGELER) {
+        const bl = this.iller.filter((il) => il.bolge === b).map((il) => il.plaka);
+        if (bl.length === plakalar.length && bl.every((p) => plakalar.includes(p))) return this.bolgeToplamlari[b];
+      }
+      return finturkTopla(`${liste.length} il toplamı`, liste);
+    }
+    turkiyePayi(g, t, y) { const a = y.tutar(g, t), b = this.turkiye.tutar(g, t); return a === null || b === null || b <= 0 ? null : a / b * 100; }
+  }
+
+  /** Beş sınıflı kantil renk ölçeği (TurkiyeHaritasi RenkOlcegi). */
+  const OLCEK_RENKLERI = ['#FCEDE6', '#F6C9B5', '#F0997B', '#D85A30', '#8A3418'];
+  function renkOlcegi(degerler) {
+    const s = [...degerler].sort((a, b) => a - b);
+    if (!s.length) return null;
+    const kantil = (q) => s[Math.round((s.length - 1) * q)];
+    const sinirlar = [s[0], kantil(0.2), kantil(0.4), kantil(0.6), kantil(0.8), s[s.length - 1]];
+    return { sinirlar, renk(d) { let i = 0; while (i < 4 && d > sinirlar[i + 1]) i++; return OLCEK_RENKLERI[i]; } };
+  }
+
+  /** Kendi rakamların (TL) seçilen yer, dönem ve türün toplamına payı (pazar_payi.dart). */
+  function pazarPayi(yer, tur, donem, k) {
+    const piyasa = (g) => { const t = yer.tutar(g, tur, donem); return t === null ? null : t * 1000; };
+    const oran = (a, b) => (a === null || a === undefined || b === null || b === undefined || b <= 0 ? null : a / b * 100);
+    const paylar = [];
+    for (const g of GOSTERGELER) {
+      const x = k[g.kod];
+      if (x > 0) { const p = piyasa(g.kod); paylar.push({ gosterge: g.kod, kendi: x, piyasa: p, pay: oran(x, p), asiyor: p !== null && x > p * 1.0000001 }); }
+    }
+    const kendiTakip = oran(k.takip, k.nakdi), piyasaTakip = yer.takipOrani(tur, donem);
+    return {
+      paylar, kendiTakipOrani: kendiTakip, piyasaTakipOrani: piyasaTakip,
+      takipFarki: kendiTakip === null || piyasaTakip === null ? null : kendiTakip - piyasaTakip,
+      kendiKrediMevduat: oran(k.nakdi, k.mevduat), piyasaKrediMevduat: oran(piyasa('nakdi'), piyasa('mevduat')),
+    };
+  }
+
+  /** Bin TL tutarı kısa yazar: "30,76 trilyon TL" (bicim.dart binTlMetni). */
+  function binTlMetni(binTl) {
+    const t = binTl * 1000;
+    if (t >= 1e12) return `${sayi(t / 1e12, 2)} trilyon TL`;
+    if (t >= 1e9) return `${sayi(t / 1e9, 1)} milyar TL`;
+    if (t >= 1e6) return `${sayi(t / 1e6, 1)} milyon TL`;
+    return tl(t);
+  }
+  /** "+0,72 puan". */
+  const puan = (d, b = 2) => `${d < 0 ? '-' : '+'}${sayi(Math.abs(d), b)} puan`;
+  /** "2026-09" → "Eylül 2026". */
+  const donemAdi = (d) => ad(coz(d));
+
   const Endeks = {
     AYLAR, ay, coz, anahtar, ad, ayAdi, yilOf, ayNo, Veri, Seri, MEMUR_TS,
     kira, maas, zamDonemi, emekliZammi, paraDegeri, ENDEKS_TURLERI, endeksOrani, endeksSonAy,
     BORDRO_YILLARI, secilebilirBordroYillari, netMaas, yenidenDegerleme, dovizAltin, tarihMetni, emeklilikHesapla, gunMetni, tarihCoz, tarihBicimle, GunlukSeri, sayi, tl, yuzde, degisimMetni, tutarCoz, tutarBicimle,
+    Finturk, FinturkYer, BANKA_TURLERI, GOSTERGELER, BOLGELER, renkOlcegi, pazarPayi, binTlMetni, puan, donemAdi,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Endeks;
   else kok.Endeks = Endeks;
