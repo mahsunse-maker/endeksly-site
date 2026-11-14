@@ -243,6 +243,12 @@
     },
   };
   const SGK_ISCI = 14, ISSIZLIK_ISCI = 1, DAMGA_YUZBINDE = 759;
+  /** Seçicide gösterilen yıllar: buYil ve sonrası; yoksa en son yıl (net_maas.dart secilebilirBordroYillari). */
+  function secilebilirBordroYillari(buYil) {
+    const yillar = Object.keys(BORDRO_YILLARI).map(Number).sort((a, b) => a - b);
+    const s = yillar.filter((y) => y >= buYil);
+    return s.length === 0 && yillar.length ? [yillar[yillar.length - 1]] : s;
+  }
   const yuvarla = (pay, payda) => Math.floor((pay + Math.floor(payda / 2)) / payda);
   function kumulatifVergi(matrah, dilimler) {
     let toplam = 0, alt = 0;
@@ -479,7 +485,7 @@
   const Endeks = {
     AYLAR, ay, coz, anahtar, ad, ayAdi, yilOf, ayNo, Veri, Seri, MEMUR_TS,
     kira, maas, zamDonemi, emekliZammi, paraDegeri, ENDEKS_TURLERI, endeksOrani, endeksSonAy,
-    BORDRO_YILLARI, netMaas, yenidenDegerleme, dovizAltin, tarihMetni, emeklilikHesapla, gunMetni, tarihCoz, tarihBicimle, GunlukSeri, sayi, tl, yuzde, degisimMetni, tutarCoz, tutarBicimle,
+    BORDRO_YILLARI, secilebilirBordroYillari, netMaas, yenidenDegerleme, dovizAltin, tarihMetni, emeklilikHesapla, gunMetni, tarihCoz, tarihBicimle, GunlukSeri, sayi, tl, yuzde, degisimMetni, tutarCoz, tutarBicimle,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Endeks;
   else kok.Endeks = Endeks;

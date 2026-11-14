@@ -201,9 +201,9 @@
       ciz();
     },
     net(v, kok) {
-      const yillar = Object.keys(E.BORDRO_YILLARI).map(Number);
-      const veriYili = E.yilOf(v.sonAy);
-      let yil = yillar.includes(veriYili) ? veriYili : yillar[yillar.length - 1];
+      const buYil = new Date().getFullYear();
+      const yillar = E.secilebilirBordroYillari(buYil);
+      let yil = yillar.includes(buYil) ? buYil : yillar[0];
       const ORNEK = 50000;
       const ayAd = (a) => E.AYLAR[a - 1];
       const para = (d) => tl(d, 2);
@@ -216,6 +216,7 @@
       const sonuc = el('div', { sinif: 'sonuc-alani' });
       const secici = cipler(yillar.map((y) => [y, String(y)]), yil, (y) => { yil = y; ciz(); });
       secici.classList.add('esit');
+      if (yillar.length < 2) secici.hidden = true;
       kok.append(secici, el('div', { sinif: 'form' }, brut.kap), asgari, primKap, ekle, sonuc);
 
       const primler = () => {
