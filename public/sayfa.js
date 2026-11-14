@@ -133,7 +133,7 @@
     return d;
   }
 
-  const NANE = '#9FE1CB', LAVANTA = '#CECBF6', KEHRIBAR = '#FAC775', ACIK = 'rgba(238,237,254,0.55)';
+  const NANE = '#9FE1CB', LAVANTA = '#A9ADB4', KEHRIBAR = '#F2945F', ACIK = 'rgba(241,241,238,0.55)';
   const NET_ANAHTAR = 'endeksly-net';
 
   // ---- hesaplayıcılar ----------------------------------------------------
@@ -515,7 +515,7 @@
         if (s.altinBugunTl !== null) satirlar.push(['Altın olarak tutulsaydı', s.altinBugunTl, '#fff']);
         if (s.konutBugunTl !== null) satirlar.push([s.konutSon === s.son ? 'Konut olarak tutulsaydı' : `Konut olarak tutulsaydı (${ad(s.konutSon)})`, s.konutBugunTl, KEHRIBAR]);
         if (s.borsaBugunTl !== null) satirlar.push(['Borsada (BIST 100) tutulsaydı', s.borsaBugunTl, '#85B7EB']);
-        if (s.dolarBugunTl !== null) satirlar.push(['Dolar olarak tutulsaydı', s.dolarBugunTl, LAVANTA]);
+        if (s.dolarBugunTl !== null) satirlar.push(['Dolar olarak tutulsaydı', s.dolarBugunTl, '#C4B5FD']);
         satirlar.sort((x, y) => y[1] - x[1]);
         const tablo = [['Aradaki enflasyon', degisimMetni(s.enflasyon)]];
         if (s.dolar !== null) tablo.push([`Dolar · o gün ${E.sayi(s.dolar)} $`, degisimMetni(s.dolarArtisi)]);
@@ -605,7 +605,7 @@
         const svg = document.createElementNS(ns, 'svg');
         svg.setAttribute('viewBox', '0 0 300 56'); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('class', 'mini-grafik');
         const pl = document.createElementNS(ns, 'polyline');
-        pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#FAC775'); pl.setAttribute('stroke-width', '2.5');
+        pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', '#F2945F'); pl.setAttribute('stroke-width', '2.5');
         pl.setAttribute('stroke-linejoin', 'round'); pl.setAttribute('vector-effect', 'non-scaling-stroke');
         pl.setAttribute('points', seri.map((d, i) => `${(i * 300 / (seri.length - 1)).toFixed(1)},${(4 + (1 - (d - mn) / ar) * 48).toFixed(1)}`).join(' '));
         svg.append(pl);

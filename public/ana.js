@@ -82,9 +82,9 @@
     const nokta = seri.map((d, i) => [i * 300 / (seri.length - 1), 6 + (1 - (d - mn) / ar) * 40]);
     const [sx, sy] = nokta[nokta.length - 1];
     return `<svg viewBox="0 0 300 52" preserveAspectRatio="none" aria-hidden="true">
-      <polyline fill="none" stroke="#FAC775" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"
+      <polyline fill="none" stroke="#F2945F" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"
         points="${nokta.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}"/>
-      <circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="4" fill="#FAC775" vector-effect="non-scaling-stroke"/></svg>`;
+      <circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="4" fill="#F2945F" vector-effect="non-scaling-stroke"/></svg>`;
   }
 
   const kacis = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
