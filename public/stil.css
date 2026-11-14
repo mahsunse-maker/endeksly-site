@@ -348,3 +348,8 @@ button.ft-cubuk:hover { background: var(--zemin); }
 .ft-ana:hover .ft-dugme.dolu { filter: brightness(1.06); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ft-dugme.dolu { background: #F2945F; color: #14171B; } }
 @media (min-width: 821px) { .hkarolar { gap: 12px; } .kahraman-kart { padding-top: 24px; } }
+/* Dar ekranda kutulardaki tutar kesilmesin (uygulama küçülterek sığdırır). */
+@media (max-width: 440px) {
+  .ft-ana-kutular b { font-size: 13px; line-height: 1.25; white-space: normal; overflow: visible; }
+  .ft-ana { padding: 14px 14px; }
+}
